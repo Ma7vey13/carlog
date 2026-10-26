@@ -629,3 +629,17 @@ ul.notice {
   min-width: 0;
   overflow-wrap: anywhere;
 }
+
+.notice__title {
+  margin: 0 0 4px;
+  font-weight: 650;
+}
+
+.notice__hint {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+}
+
+.notice .plain-list {
+  font-variant-numeric: tabular-nums;
+}

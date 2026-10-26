@@ -69,6 +69,7 @@ test('enter a visit by hand, find it, edit it and delete it', async ({ page }) =
   await expect(page.getByText('Суппорт тормозной перед.(лев.) SFN')).toBeVisible();
   await expect(page.getByText('В документе: Супорт тормозной перед.(лев.) SFN')).toBeVisible();
   await expect(page.getByText('Акт выполненных работ № 1 от 12.03.2025 к з/н № 25857 от 12.03.2025')).toBeVisible();
+  await expect(page.getByTestId('card-totals-mismatch')).toHaveCount(0);
 
   // Survives a reload (stored in IndexedDB).
   await page.reload();
@@ -104,6 +105,13 @@ test('enter a visit by hand, find it, edit it and delete it', async ({ page }) =
   await page.getByRole('button', { name: 'Сохранить визит' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Визит 12.03.2025');
   await expect(page.locator('.line-item', { hasText: 'Колодки тормозные перед.(OEM) SFN' })).toContainText('3 700 ₽');
+
+  // The card warns that the document totals no longer match the lines.
+  const warning = page.getByTestId('card-totals-mismatch');
+  await expect(warning).toContainText('Итоги документа не сходятся со строками');
+  await expect(warning).toContainText('Запчасти: в документе 18 500 ₽, по строкам 18 600 ₽');
+  await expect(warning).toContainText('Всего: в документе 23 200 ₽, по строкам 23 300 ₽');
+  await expect(warning.getByRole('link', { name: 'изменить визит' })).toHaveAttribute('href', /\/edit$/);
 
   // Delete with confirmation.
   await page.getByRole('button', { name: 'Удалить' }).click();

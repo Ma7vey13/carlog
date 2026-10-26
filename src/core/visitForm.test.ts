@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BRAKES_FRONT_2025, DISCS_FRONT_2025, ORDER_OIL_2025 } from '../../tests/fixtures/manualVisits';
 import { fixtureToBundle, fixtureToForm, TEST_DEVICE, TEST_VEHICLE } from '../../tests/helpers';
-import { sumLines, visitTotal } from './bundle';
+import { sumLines, totalsMismatches, visitTotal } from './bundle';
 import { startComponentId } from './components';
 import { VISIT_TEMPLATES } from './templates';
 import {
@@ -173,5 +173,20 @@ describe('copy, templates and hints', () => {
 
   it('visit total uses the document total when present', () => {
     expect(visitTotal(fixtureToBundle(ORDER_OIL_2025))).toBe(9310000);
+  });
+
+  it('reports document totals that differ from the lines', () => {
+    const bundle = fixtureToBundle(BRAKES_FRONT_2025);
+    const { document, lines } = bundle.documents[0]!;
+    expect(totalsMismatches(document.totals, sumLines(lines))).toEqual([]);
+
+    lines[3]!.sum = 370000; // pads 3 600 → 3 700
+    expect(totalsMismatches(document.totals, sumLines(lines))).toEqual([
+      { label: 'Запчасти', document: 1850000, lines: 1860000 },
+      { label: 'Всего', document: 2320000, lines: 2330000 },
+    ]);
+
+    // Empty document totals are not compared.
+    expect(totalsMismatches({ works: null, parts: null, total: null, discountPercent: null }, sumLines(lines))).toEqual([]);
   });
 });

@@ -1,7 +1,14 @@
 // Russian UI labels for stored enum values.
 
+import type { TotalsMismatch } from './bundle';
 import type { Axle, CarDocument, DocumentType, LineKind, Side, VisitKind } from './model';
 import { formatDate } from './format';
+import { formatRub } from './money';
+
+/** "Запчасти: в документе 18 500 ₽, по строкам 18 600 ₽" */
+export function totalsMismatchText(m: TotalsMismatch): string {
+  return `${m.label}: в документе ${formatRub(m.document)}, по строкам ${formatRub(m.lines)}`;
+}
 
 export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   work_order: 'Заказ-наряд',

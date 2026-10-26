@@ -32,6 +32,27 @@ export function sumLines(lines: readonly LineItem[]): LineTotals {
   return { works, parts, total: works + parts };
 }
 
+export interface TotalsMismatch {
+  label: 'Работы' | 'Запчасти' | 'Всего';
+  document: Kopecks;
+  lines: Kopecks;
+}
+
+/**
+ * Document totals that differ from the sum of its lines. Totals left empty are not compared.
+ * Shown as a warning on the visit card and in the editor; never blocks anything.
+ */
+export function totalsMismatches(totals: CarDocument['totals'], lines: LineTotals): TotalsMismatch[] {
+  const pairs: Array<[TotalsMismatch['label'], Kopecks | null, Kopecks]> = [
+    ['Работы', totals.works, lines.works],
+    ['Запчасти', totals.parts, lines.parts],
+    ['Всего', totals.total, lines.total],
+  ];
+  return pairs
+    .filter((p): p is [TotalsMismatch['label'], Kopecks, Kopecks] => p[1] !== null && p[1] !== p[2])
+    .map(([label, document, lineSum]) => ({ label, document, lines: lineSum }));
+}
+
 export function allLines(bundle: VisitBundle): LineItem[] {
   return bundle.documents.flatMap((d) => d.lines);
 }

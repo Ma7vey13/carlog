@@ -1,5 +1,6 @@
 import type { Component, LineKind, RegulationItem } from '../../core/model';
-import { DOCUMENT_TYPE_LABELS } from '../../core/labels';
+import { totalsMismatches } from '../../core/bundle';
+import { DOCUMENT_TYPE_LABELS, totalsMismatchText } from '../../core/labels';
 import { formatRub, parseRubles } from '../../core/money';
 import type { DocumentForm, LineForm } from '../../core/visitForm';
 import { Checkbox, SelectField, TextField } from '../../ui/Field';
@@ -43,13 +44,10 @@ export function DocumentEditor(props: Props) {
   const showRelated = doc.type === 'act' || doc.type === 'invoice' || doc.relatedNumber !== '' || doc.relatedDate !== '';
 
   // Differences between typed document totals and the lines: shown as hints, not blocking.
-  const mismatches = (
-    [
-      ['работы', parseRubles(doc.totalWorks), totals.works],
-      ['запчасти', parseRubles(doc.totalParts), totals.parts],
-      ['всего', parseRubles(doc.totalAll), totals.total],
-    ] as const
-  ).filter(([, typed, computed]) => typed !== null && typed !== computed);
+  const mismatches = totalsMismatches(
+    { works: parseRubles(doc.totalWorks), parts: parseRubles(doc.totalParts), total: parseRubles(doc.totalAll), discountPercent: null },
+    totals,
+  );
 
   return (
     <section className="card" aria-label={`Документ ${index + 1}`} data-testid="document">
@@ -151,10 +149,8 @@ export function DocumentEditor(props: Props) {
         </div>
         {mismatches.length > 0 && (
           <ul className="notice notice--warning" data-testid="totals-mismatch">
-            {mismatches.map(([label, typed, computed]) => (
-              <li key={label}>
-                {label[0]!.toUpperCase() + label.slice(1)}: в документе {formatRub(typed)}, по строкам {formatRub(computed)}
-              </li>
+            {mismatches.map((m) => (
+              <li key={m.label}>{totalsMismatchText(m)}</li>
             ))}
           </ul>
         )}

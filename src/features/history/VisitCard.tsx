@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
 import { usePageHeader } from '../../app/pageHeader';
 import { hrefFor } from '../../app/routes';
-import { sumLines, visitTotal } from '../../core/bundle';
+import { sumLines, totalsMismatches, visitTotal, type TotalsMismatch } from '../../core/bundle';
 import { formatDate, formatKm } from '../../core/format';
-import { documentTitle, LINE_KIND_LABELS, positionLabel, VISIT_KIND_LABELS } from '../../core/labels';
+import { documentTitle, LINE_KIND_LABELS, positionLabel, totalsMismatchText, VISIT_KIND_LABELS } from '../../core/labels';
 import type { Component, Id, LineItem } from '../../core/model';
 import { formatQty, formatRub } from '../../core/money';
 import { getDb } from '../../db/db';
@@ -83,6 +83,7 @@ export function VisitCard({ id }: { id: Id }) {
 
       {bundle.documents.map(({ document, lines }) => {
         const totals = sumLines(lines);
+        const mismatches = totalsMismatches(document.totals, totals);
         const works = lines.filter((l) => l.kind === 'work');
         const parts = lines.filter((l) => l.kind !== 'work');
         return (
@@ -111,6 +112,7 @@ export function VisitCard({ id }: { id: Id }) {
                 <dd>{formatRub(document.totals.total ?? totals.total)}</dd>
               </div>
             </dl>
+            {mismatches.length > 0 && <TotalsWarning mismatches={mismatches} editHref={hrefFor(`/history/${visit.id}/edit`)} />}
           </section>
         );
       })}
@@ -137,6 +139,26 @@ export function VisitCard({ id }: { id: Id }) {
           останутся.
         </p>
       </ConfirmDialog>
+    </div>
+  );
+}
+
+/**
+ * The totals above come from the document; this says where they differ from the lines,
+ * e.g. after a price was corrected but the document totals were not.
+ */
+function TotalsWarning({ mismatches, editHref }: { mismatches: TotalsMismatch[]; editHref: string }) {
+  return (
+    <div className="notice notice--warning" role="note" data-testid="card-totals-mismatch">
+      <p className="notice__title">Итоги документа не сходятся со строками</p>
+      <ul className="plain-list">
+        {mismatches.map((m) => (
+          <li key={m.label}>{totalsMismatchText(m)}</li>
+        ))}
+      </ul>
+      <p className="notice__hint">
+        Проверьте цены в строках или итоги документа: <a href={editHref}>изменить визит</a>.
+      </p>
     </div>
   );
 }
