@@ -1,0 +1,4 @@
+#!/bin/sh
+# Blocks commits with scans, private files and token-like strings.
+# See scripts/check-staged.mjs and SPEC section 14.
+exec node scripts/check-staged.mjs

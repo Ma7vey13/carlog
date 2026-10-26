@@ -1,0 +1,30 @@
+# Private data: scans, decrypted drafts, inbox, local carlog-data clone.
+# Must never reach the public repository (SPEC section 14).
+private/
+
+# Local copy of the spec: contains the service's business details.
+# Kept out of the public repo until the owner decides otherwise (DECISIONS.md, D-017).
+SPEC.md
+
+# Dependencies and build output
+node_modules/
+dist/
+dev-dist/
+coverage/
+playwright-report/
+test-results/
+blob-report/
+*.tsbuildinfo
+
+# Secrets and local env
+.env
+.env.*
+
+# Local tool settings
+.claude/settings.local.json
+
+# OS / editor noise
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
