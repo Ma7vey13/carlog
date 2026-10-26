@@ -80,6 +80,12 @@ export interface CarDocument extends SyncFields {
   /** Parts bought but not installed (SPEC section 7, item 7). */
   purchaseOnly: boolean;
   scanIds: Id[];
+  /**
+   * Set when a later document replaced this one's lines ("заменить строки": a work order
+   * superseded by its act). The document and its scans stay; its lines no longer count.
+   * Optional: records saved before stage 3 do not have it.
+   */
+  supersededBy?: Id | null;
 }
 
 export type LineKind = 'work' | 'part' | 'material';
@@ -154,8 +160,12 @@ export interface MatchRule extends SyncFields {
 /** "Work → expected part" pair for the "customer part?" check (SPEC section 7, item 6). */
 export interface ExpectedPartRule extends SyncFields {
   label: string;
+  /** All must occur in a work line (word starts, see core/expectedParts.ts). */
   workKeywords: string[];
+  /** Any of them in a part/material line means the part is there. */
   partKeywords: string[];
+  /** Name of the line added as "запчасть клиента". */
+  partName: string;
 }
 
 export interface SelfCheckItem extends SyncFields {

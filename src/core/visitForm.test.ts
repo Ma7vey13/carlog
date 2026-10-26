@@ -135,7 +135,8 @@ describe('formToRecords', () => {
     const live = r.lines.filter((l) => !l.deleted);
     const removed = r.lines.filter((l) => l.deleted);
     expect(live).toHaveLength(6);
-    expect(live.map((l) => l.n)).toEqual([1, 2, 3, 4, 5, 6]);
+    // Lines keep their document numbering; removing line 2 leaves a gap, as on paper.
+    expect(live.map((l) => l.n)).toEqual([1, 3, 4, 5, 6, 7]);
     expect(live[0]).toMatchObject({ id: original.documents[0]!.lines[0]!.id, price: 210000, sum: 210000 });
     expect(removed.map((l) => l.id)).toEqual([original.documents[0]!.lines[1]!.id]);
     expect(r.mileage).toMatchObject({ id: original.mileage!.id, deleted: true });

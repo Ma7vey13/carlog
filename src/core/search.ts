@@ -1,7 +1,7 @@
 // History search and component filter (SPEC stage 2). Data is small (hundreds of lines),
 // so filtering runs in memory over loaded bundles.
 
-import type { VisitBundle } from './bundle';
+import { allLines, type VisitBundle } from './bundle';
 import type { Component, Id, LineItem } from './model';
 import { matchKey } from './normalize';
 
@@ -67,7 +67,7 @@ export function filterVisits(bundles: readonly VisitBundle[], filter: HistoryFil
   const result: VisitMatch[] = [];
 
   for (const bundle of bundles) {
-    const lines = bundle.documents.flatMap((d) => d.lines).filter((l) => !l.deleted);
+    const lines = allLines(bundle).filter((l) => !l.deleted);
     const inComponent = componentIds ? lines.filter((l) => l.componentId && componentIds.has(l.componentId)) : lines;
     if (componentIds && inComponent.length === 0) continue;
 

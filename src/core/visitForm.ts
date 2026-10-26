@@ -1,7 +1,7 @@
 // Visit form (manual entry, SPEC section 6В): editable text state, validation and conversion
 // to records. Pure functions; the UI only renders this state and the db layer only stores records.
 
-import type { VisitBundle } from './bundle';
+import { activeDocuments, type VisitBundle } from './bundle';
 import { suggestComponentId } from './components';
 import { isIsoDate, todayIso } from './dates';
 import { newId } from './ids';
@@ -25,9 +25,17 @@ import type { VisitTemplate } from './templates';
 export interface LineForm {
   key: string;
   id: Id | null;
+  /** Row number in the document; null for lines added by hand (numbered after the last one). */
+  n: number | null;
   kind: LineKind;
-  /** Name as typed or as in the document; `name` is derived with normalizeName on save. */
+  /** Name as typed or as in the document; the stored `name` is normalizeName(rawName) … */
   rawName: string;
+  /** … unless the owner (or a learned MatchRule) set a name of their own. '' = automatic. */
+  nameOverride: string;
+  /** True once the owner changed the name, component or regulation items by hand (offer "Запомнить"). */
+  bindingEdited: boolean;
+  /** Save this line's binding as a MatchRule for similar lines. */
+  remember: boolean;
   qty: string;
   unit: string;
   price: string;
@@ -91,8 +99,12 @@ export function emptyLine(kind: LineKind = 'work'): LineForm {
   return {
     key: nextKey(),
     id: null,
+    n: null,
     kind,
     rawName: '',
+    nameOverride: '',
+    bindingEdited: false,
+    remember: false,
     qty: '1',
     unit: '',
     price: '',
@@ -154,6 +166,7 @@ export function updateLine(line: LineForm, patch: Partial<LineForm>, hints: read
 
   if ('sum' in patch) next.sumTouched = patch.sum !== '';
   if ('componentId' in patch) next.componentTouched = true;
+  if ('componentId' in patch || 'nameOverride' in patch || 'regulationItemIds' in patch) next.bindingEdited = true;
   if ('axle' in patch || 'side' in patch) next.positionTouched = true;
 
   if ('rawName' in patch) {
@@ -378,16 +391,20 @@ export function formToRecords(form: VisitForm, ctx: SaveContext): VisitRecords {
       }),
     );
 
-    doc.lines.forEach((line, index) => {
+    // Keep the document's own numbering; lines added by hand go after the largest number.
+    let lastN = 0;
+    doc.lines.forEach((line) => {
       const prev = line.id ? oldLines.get(line.id) : undefined;
+      const n = line.n !== null && line.n > lastN ? line.n : lastN + 1;
+      lastN = n;
       lines.push(
         stamp(prev?.id ?? null, prev, {
           visitId,
           documentId,
-          n: index + 1,
+          n,
           kind: line.kind,
           rawName: line.rawName.trim(),
-          name: normalizeName(line.rawName),
+          name: line.nameOverride.trim() || normalizeName(line.rawName),
           qty: line.qty.trim() === '' ? null : parseQty(line.qty),
           unit: text(line.unit),
           price: parseRubles(line.price),
@@ -403,14 +420,20 @@ export function formToRecords(form: VisitForm, ctx: SaveContext): VisitRecords {
     });
   }
 
-  // Removed while editing → deletion markers.
+  // Removed while editing → deletion markers. Superseded documents are not in the form
+  // (see bundleToForm) and must survive editing untouched.
   const keptDocIds = new Set(documents.map((d) => d.id));
   const keptLineIds = new Set(lines.map((l) => l.id));
+  const supersededDocIds = new Set((existing?.documents ?? []).filter((d) => d.document.supersededBy).map((d) => d.document.id));
   for (const { document } of existing?.documents ?? []) {
-    if (!keptDocIds.has(document.id)) documents.push({ ...document, deleted: true, updatedAt: now, deviceId });
+    if (!keptDocIds.has(document.id) && !supersededDocIds.has(document.id)) {
+      documents.push({ ...document, deleted: true, updatedAt: now, deviceId });
+    }
   }
   for (const old of oldLines.values()) {
-    if (!keptLineIds.has(old.id)) lines.push({ ...old, deleted: true, updatedAt: now, deviceId });
+    if (!keptLineIds.has(old.id) && !supersededDocIds.has(old.documentId)) {
+      lines.push({ ...old, deleted: true, updatedAt: now, deviceId });
+    }
   }
 
   const oldMileage = existing?.mileage ?? null;
@@ -443,7 +466,8 @@ export function bundleToForm(bundle: VisitBundle): VisitForm {
     shopAddress: visit.shop.address ?? '',
     shopPhone: visit.shop.phone ?? '',
     notes: visit.notes,
-    documents: bundle.documents.map(({ document: d, lines }) => ({
+    // Superseded documents are history, not editable content; formToRecords keeps them as they are.
+    documents: activeDocuments(bundle).map(({ document: d, lines }) => ({
       key: nextKey(),
       id: d.id,
       type: d.type,
@@ -470,8 +494,12 @@ function lineToForm(l: LineItem, keepId = true): LineForm {
   return {
     key: nextKey(),
     id: keepId ? l.id : null,
+    n: l.n,
     kind: l.kind,
     rawName: l.rawName,
+    nameOverride: l.name && l.name !== normalizeName(l.rawName) ? l.name : '',
+    bindingEdited: false,
+    remember: false,
     qty,
     unit: l.unit ?? '',
     price,
@@ -501,7 +529,7 @@ export function copyVisitToForm(bundle: VisitBundle, today: string = todayIso())
     date: today,
     odometer: '',
     notes: '',
-    documents: bundle.documents.map(({ document: d, lines }) => ({
+    documents: activeDocuments(bundle).map(({ document: d, lines }) => ({
       ...emptyDocument(d.type),
       lines: lines.map((l) => lineToForm(l, false)),
     })),

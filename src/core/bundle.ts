@@ -53,14 +53,20 @@ export function totalsMismatches(totals: CarDocument['totals'], lines: LineTotal
     .map(([label, document, lineSum]) => ({ label, document, lines: lineSum }));
 }
 
+/** Documents whose lines count: everything except documents replaced by a later one (D-038). */
+export function activeDocuments(bundle: VisitBundle): DocumentBundle[] {
+  return bundle.documents.filter((d) => !d.document.supersededBy);
+}
+
+/** Lines that count for totals, search and history (superseded documents excluded). */
 export function allLines(bundle: VisitBundle): LineItem[] {
-  return bundle.documents.flatMap((d) => d.lines);
+  return activeDocuments(bundle).flatMap((d) => d.lines);
 }
 
 /** Total of a visit: the document's own total when given, otherwise the sum of lines. */
 export function visitTotal(bundle: VisitBundle): Kopecks {
   let total = 0;
-  for (const { document, lines } of bundle.documents) {
+  for (const { document, lines } of activeDocuments(bundle)) {
     total += document.totals.total ?? sumLines(lines).total;
   }
   return total;
