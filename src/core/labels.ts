@@ -1,7 +1,7 @@
 // Russian UI labels for stored enum values.
 
 import type { TotalsMismatch } from './bundle';
-import type { Axle, CarDocument, DocumentType, LineKind, Side, VisitKind } from './model';
+import type { Axle, CarDocument, DocumentType, DraftStatus, LineKind, Side, VisitKind } from './model';
 import { formatDate } from './format';
 import { formatRub } from './money';
 
@@ -22,6 +22,13 @@ export const LINE_KIND_LABELS: Record<LineKind, string> = {
   work: 'Работа',
   part: 'Запчасть',
   material: 'Материалы',
+};
+
+export const DRAFT_STATUS_LABELS: Record<DraftStatus, string> = {
+  pending: 'Ждёт распознавания',
+  ready: 'Готов к проверке',
+  accepted: 'Принят',
+  rejected: 'Отклонён',
 };
 
 export const VISIT_KIND_LABELS: Record<VisitKind, string> = {

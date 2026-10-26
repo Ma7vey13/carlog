@@ -1,7 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { HistoryScreen } from '../features/history/HistoryScreen';
 import { MoreScreen } from '../features/more/MoreScreen';
-import { InboxScreen, RegulationScreen, StateScreen } from '../features/placeholders';
+import { InboxScreen } from '../features/inbox/InboxScreen';
+import { RegulationScreen, StateScreen } from '../features/placeholders';
+import { useOpenDraftCount } from '../db/hooks';
 import { BackIcon, CloudOffIcon, TAB_ICONS } from '../ui/icons';
 import { PageHeaderContext, type PageHeader } from './pageHeader';
 import { hrefFor, TABS, type Route, type TabId } from './routes';
@@ -21,6 +23,7 @@ const SCREENS: Record<TabId, (props: { route: Route }) => ReactNode> = {
 export function App() {
   const route = useRoute();
   const online = useOnline();
+  const inboxCount = useOpenDraftCount();
   const [header, setHeader] = useState<PageHeader | null>(null);
   useTheme(); // applies the saved theme and follows the OS theme
 
@@ -48,7 +51,14 @@ export function App() {
               return (
                 <li key={t.id}>
                   <a className="nav__link" href={hrefFor(t.path)} aria-current={active ? 'page' : undefined}>
-                    <TabIcon className="nav__icon" />
+                    <span className="nav__icon-wrap">
+                      <TabIcon className="nav__icon" />
+                      {t.id === 'inbox' && inboxCount > 0 && (
+                        <span className="badge" aria-label={`черновиков: ${inboxCount}`} data-testid="inbox-badge">
+                          {inboxCount}
+                        </span>
+                      )}
+                    </span>
                     <span className="nav__label">{t.label}</span>
                   </a>
                 </li>

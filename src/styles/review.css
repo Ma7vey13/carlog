@@ -1,0 +1,394 @@
+/* Stage 3: inbox, scan viewer, review screen. Tokens come from global.css. */
+
+/* Nav badge */
+.nav__icon-wrap {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+}
+
+.badge {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--status-red);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+/* Chips */
+.chip {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.chip--pending {
+  background: color-mix(in srgb, var(--status-yellow) 18%, var(--surface));
+  color: var(--text);
+}
+
+.chip--ready {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.chip--accepted {
+  background: color-mix(in srgb, var(--status-green) 16%, var(--surface));
+  color: var(--status-green);
+}
+
+/* Inbox list */
+.draft-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: inherit;
+  text-decoration: none;
+}
+
+.draft-row:hover {
+  border-color: var(--accent);
+}
+
+.draft-row__body {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 2px;
+  font-size: 14px;
+}
+
+.draft-row__title {
+  font-weight: 600;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.thumb {
+  display: block;
+  flex: none;
+  width: 44px;
+  height: 58px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-2);
+}
+
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+.archive {
+  gap: 10px;
+}
+
+.archive__row {
+  display: grid;
+  gap: 4px;
+}
+
+.archive__row .btn {
+  justify-self: start;
+}
+
+/* Steps of the chat recognition */
+.steps {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  padding-left: 22px;
+}
+
+.steps > li {
+  display: grid;
+  gap: 8px;
+}
+
+.steps > li > .btn {
+  justify-self: start;
+}
+
+.steps--compact {
+  gap: 6px;
+  font-size: 14px;
+}
+
+/* Scan viewer */
+.viewer {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.viewer__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+.viewer__pages,
+.viewer__tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.viewer__next svg {
+  transform: rotate(180deg);
+}
+
+.viewer__count,
+.viewer__zoom {
+  min-width: 44px;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.viewer__text-btn {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.viewer__frame {
+  overflow: auto;
+  max-height: 72dvh;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  -webkit-overflow-scrolling: touch;
+}
+
+.viewer__img {
+  display: block;
+  max-width: none;
+  height: auto;
+}
+
+.viewer__loading {
+  padding: 24px;
+}
+
+/* Review layout: tabs on phones, side by side on wide screens */
+.review {
+  display: grid;
+  gap: 12px;
+}
+
+.review__tabs {
+  position: sticky;
+  top: calc(env(safe-area-inset-top) + 57px);
+  z-index: 6;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
+}
+
+.review[data-tab='data'] .review__scan,
+.review[data-tab='scan'] .review__data {
+  display: none;
+}
+
+@media (min-width: 1100px) {
+  .review {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .review__tabs {
+    display: none;
+  }
+
+  .review[data-tab] .review__scan,
+  .review[data-tab] .review__data {
+    display: grid;
+  }
+
+  .review__scan {
+    position: sticky;
+    top: 72px;
+  }
+
+  .review__scan .viewer__frame {
+    max-height: calc(100dvh - 140px);
+  }
+}
+
+/* Checks */
+.checks-panel {
+  border-color: color-mix(in srgb, var(--status-yellow) 55%, var(--border));
+}
+
+.checks-panel--ok {
+  border-color: color-mix(in srgb, var(--status-green) 50%, var(--border));
+}
+
+.checks-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.check-item {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-left: 4px solid var(--status-yellow);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--status-yellow) 9%, var(--surface));
+}
+
+.check-item--done {
+  border-left-color: var(--status-green);
+  background: var(--surface-2);
+}
+
+.check-item--done .check-item__title {
+  color: var(--text-muted);
+}
+
+.check-item__title {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.check-item__details {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.check-item__actions {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+
+.btn--wrap {
+  height: auto;
+  min-height: 44px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  text-align: left;
+  white-space: normal;
+}
+
+.choices {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.choices legend {
+  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--text-muted);
+}
+
+.radio {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 40px;
+  padding: 6px 0;
+  cursor: pointer;
+}
+
+.radio input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  accent-color: var(--accent);
+}
+
+.notice--info {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.link-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Lines with an open check */
+.line--flagged {
+  border-color: var(--status-yellow);
+  box-shadow: inset 4px 0 0 var(--status-yellow);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .line--pulse {
+    animation: line-pulse 1.2s ease-out;
+  }
+
+  @keyframes line-pulse {
+    0% {
+      box-shadow: 0 0 0 4px var(--accent);
+    }
+    100% {
+      box-shadow: 0 0 0 0 transparent;
+    }
+  }
+}
+
+/* Visit card: superseded documents */
+.superseded summary {
+  flex-wrap: wrap;
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Rule list */
+.rule-row {
+  padding-left: 12px;
+}
+
+.rule-row .component-row__name {
+  display: grid;
+  gap: 2px;
+  padding: 8px 0;
+}
+
+.rule-row__words {
+  font-size: 13px;
+}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { hrefFor, type Route } from '../../app/routes';
 import { ComponentsScreen } from './ComponentsScreen';
+import { PartRulesScreen } from './PartRulesScreen';
 import { getStorageInfo, requestPersistence, type StorageInfo } from '../../app/storage';
 import { THEME_LABELS, useTheme, type ThemeChoice } from '../../app/theme';
 import { formatBytes, formatDate } from '../../core/format';
@@ -9,6 +10,7 @@ const THEME_ORDER: ThemeChoice[] = ['system', 'light', 'dark'];
 
 export function MoreScreen({ route }: { route: Route }) {
   if (route.rest[0] === 'components') return <ComponentsScreen />;
+  if (route.rest[0] === 'part-rules') return <PartRulesScreen />;
   return (
     <div className="stack">
       <section className="card">
@@ -19,11 +21,50 @@ export function MoreScreen({ route }: { route: Route }) {
             ›
           </span>
         </a>
+        <a className="menu-link" href={hrefFor('/more/part-rules')}>
+          <span>Правила «работа → запчасть»</span>
+          <span className="muted" aria-hidden="true">
+            ›
+          </span>
+        </a>
       </section>
+      <ChatPrivacySection />
       <ThemeSection />
       <StorageSection />
       <AboutSection />
     </div>
+  );
+}
+
+/** SPEC section 6Б: how to keep chats with scans out of AI training. */
+function ChatPrivacySection() {
+  return (
+    <section className="card">
+      <h2 className="card__title">Распознавание через чат-ИИ</h2>
+      <details className="line__more">
+        <summary>Как в Gemini отключить сохранение чатов</summary>
+        <ol className="steps steps--compact">
+          <li>
+            Откройте Gemini → меню (☰) → <strong>Настройки</strong> → <strong>Действия</strong> (в некоторых версиях — «Активность в приложениях Gemini»).
+          </li>
+          <li>
+            Нажмите <strong>Отключить</strong> (или «Отключить и удалить действия»). Тогда новые чаты не сохраняются в аккаунте и не используются для
+            обучения моделей.
+          </li>
+          <li>Даже при отключённой истории Google хранит чат до 72 часов для работы сервиса. Сам сервис менять настройки за вас не может.</li>
+        </ol>
+        <p className="hint">
+          Страница настроек в браузере:{' '}
+          <a href="https://myactivity.google.com/product/gemini" target="_blank" rel="noreferrer noopener">
+            myactivity.google.com/product/gemini
+          </a>
+        </p>
+      </details>
+      <p className="hint">
+        На скане есть ваши ФИО, телефон и госномер. Они уходят в чат вместе с картинкой. Если не хотите — закройте их пальцем на фото или
+        обрежьте скан перед отправкой: для распознавания они не нужны.
+      </p>
+    </section>
   );
 }
 

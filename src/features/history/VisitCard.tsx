@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react';
 import { usePageHeader } from '../../app/pageHeader';
 import { hrefFor } from '../../app/routes';
-import { sumLines, totalsMismatches, visitTotal, type TotalsMismatch } from '../../core/bundle';
+import { activeDocuments, sumLines, totalsMismatches, visitTotal, type TotalsMismatch } from '../../core/bundle';
 import { formatDate, formatKm } from '../../core/format';
 import { documentTitle, LINE_KIND_LABELS, positionLabel, totalsMismatchText, VISIT_KIND_LABELS } from '../../core/labels';
 import type { Component, Id, LineItem } from '../../core/model';
 import { formatQty, formatRub } from '../../core/money';
 import { getDb } from '../../db/db';
-import { useComponents, useVisitBundle } from '../../db/hooks';
+import { useComponents, useScans, useVisitBundle } from '../../db/hooks';
+import { ScanViewer } from '../review/ScanViewer';
 import { deleteVisit } from '../../db/visits';
 import { ConfirmDialog } from '../../ui/Dialog';
 import { EditIcon, TrashIcon } from '../../ui/icons';
@@ -81,7 +82,7 @@ export function VisitCard({ id }: { id: Id }) {
         {visit.notes && <p className="notes">{visit.notes}</p>}
       </section>
 
-      {bundle.documents.map(({ document, lines }) => {
+      {activeDocuments(bundle).map(({ document, lines }) => {
         const totals = sumLines(lines);
         const mismatches = totalsMismatches(document.totals, totals);
         const works = lines.filter((l) => l.kind === 'work');
@@ -90,6 +91,7 @@ export function VisitCard({ id }: { id: Id }) {
           <section key={document.id} className="card" aria-label={documentTitle(document)}>
             <h2 className="card__title">{documentTitle(document)}</h2>
             {document.purchaseOnly && <p className="pill">Покупка без установки</p>}
+            {document.scanIds.length > 0 && <DocumentScans scanIds={document.scanIds} />}
             {works.length > 0 && <LineGroup title="Работы" lines={works} componentNames={componentNames} />}
             {parts.length > 0 && <LineGroup title="Запчасти и материалы" lines={parts} componentNames={componentNames} />}
             <dl className="facts facts--totals">
@@ -117,6 +119,25 @@ export function VisitCard({ id }: { id: Id }) {
         );
       })}
 
+      {bundle.documents
+        .filter((d) => d.document.supersededBy)
+        .map(({ document, lines }) => (
+          <details key={document.id} className="card superseded" data-testid="superseded-document">
+            <summary>
+              {documentTitle(document)} <span className="muted">— заменён, в итоги не входит</span>
+            </summary>
+            <p className="hint">Строки этого документа заменены более поздним документом по тому же заказу. Он хранится вместе со сканом для истории.</p>
+            <ul className="plain-list">
+              {lines.map((l) => (
+                <li key={l.id}>
+                  {l.name || l.rawName} — {formatRub(l.sum)}
+                </li>
+              ))}
+            </ul>
+            {document.scanIds.length > 0 && <DocumentScans scanIds={document.scanIds} />}
+          </details>
+        ))}
+
       <div className="btn-row">
         <a className="btn btn--primary" href={hrefFor(`/history/${visit.id}/edit`)}>
           <EditIcon width={18} height={18} /> Изменить
@@ -140,6 +161,18 @@ export function VisitCard({ id }: { id: Id }) {
         </p>
       </ConfirmDialog>
     </div>
+  );
+}
+
+/** Scan pages of a document, loaded only when opened. */
+function DocumentScans({ scanIds }: { scanIds: Id[] }) {
+  const [open, setOpen] = useState(false);
+  const scans = useScans(open ? scanIds : []);
+  return (
+    <details className="line__more" onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary>Скан ({scanIds.length} стр.)</summary>
+      {open && scans && <ScanViewer scans={scans} />}
+    </details>
   );
 }
 
