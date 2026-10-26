@@ -1,5 +1,5 @@
 import { EmptyState } from '../ui/EmptyState';
-import { GaugeIcon, HistoryIcon, InboxIcon, RegulationIcon } from '../ui/icons';
+import { GaugeIcon, InboxIcon, RegulationIcon } from '../ui/icons';
 
 // Empty screens of stage 1. Each is replaced by the real screen in its own stage.
 
@@ -7,14 +7,6 @@ export function StateScreen() {
   return (
     <EmptyState icon={<GaugeIcon />} title="Пока нет данных" note="Появится на этапе 6">
       <p>Здесь будет главный экран: текущий пробег, что пора менять и что проверить самому.</p>
-    </EmptyState>
-  );
-}
-
-export function HistoryScreen() {
-  return (
-    <EmptyState icon={<HistoryIcon />} title="История пуста" note="Появится на этапе 2">
-      <p>Здесь будет лента визитов в сервис и своих работ, поиск по названию и фильтр по узлам.</p>
     </EmptyState>
   );
 }

@@ -1,13 +1,25 @@
 import { useCallback, useEffect, useState } from 'react';
+import { hrefFor, type Route } from '../../app/routes';
+import { ComponentsScreen } from './ComponentsScreen';
 import { getStorageInfo, requestPersistence, type StorageInfo } from '../../app/storage';
 import { THEME_LABELS, useTheme, type ThemeChoice } from '../../app/theme';
 import { formatBytes, formatDate } from '../../core/format';
 
 const THEME_ORDER: ThemeChoice[] = ['system', 'light', 'dark'];
 
-export function MoreScreen() {
+export function MoreScreen({ route }: { route: Route }) {
+  if (route.rest[0] === 'components') return <ComponentsScreen />;
   return (
     <div className="stack">
+      <section className="card">
+        <h2 className="card__title">Данные</h2>
+        <a className="menu-link" href={hrefFor('/more/components')}>
+          <span>Справочник узлов</span>
+          <span className="muted" aria-hidden="true">
+            ›
+          </span>
+        </a>
+      </section>
       <ThemeSection />
       <StorageSection />
       <AboutSection />
