@@ -81,7 +81,9 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
+        // .mjs: the pdf.js worker; it must be precached so PDFs open offline.
+        globPatterns: ['**/*.{js,mjs,css,html,svg,png,ico,webmanifest}'],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         navigateFallback: 'index.html',
         cleanupOutdatedCaches: true,
         // Take control of open tabs on activation. Without it a tab opened before the first

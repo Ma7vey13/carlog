@@ -9,7 +9,7 @@ import { filterVisits } from '../core/search';
 import { updateLine } from '../core/visitForm';
 import { CarlogDB } from './db';
 import { resetDeviceIdCache } from './device';
-import { createDraftFromJson, createDraftFromScans, isOpenDraft, loadDrafts, rejectDraft, restoreDraft, saveReviewedDraft, setDraftPayload } from './drafts';
+import { createDraftFromJson, createDraftFromScans, isOpenDraft, loadDrafts, rejectDraft, restoreDraft, saveReviewedDraft, setDraftPayload, splitDraftByPages } from './drafts';
 import { loadScanBlob, loadScans, rotateScan, storeScans } from './scans';
 import { ensureSeed } from './seed';
 import { loadMileage, loadVisitBundle, loadVisitBundles } from './visits';
@@ -61,6 +61,19 @@ describe('scans and drafts', () => {
     await restoreDraft(db, id);
     expect((await db.drafts.get(id))?.status).toBe('ready');
     expect((await loadDrafts(db)).map((d) => d.id)).toEqual([id]);
+  });
+});
+
+describe('splitDraftByPages', () => {
+  it('turns a PDF of several documents into one draft per page, in page order', async () => {
+    const scanIds = await storeScans(db, [page('p1'), page('p2'), page('p3')]);
+    const id = await createDraftFromScans(db, scanIds);
+    const ids = await splitDraftByPages(db, id);
+    expect(ids[0]).toBe(id);
+    const drafts = await loadDrafts(db); // newest first
+    expect(drafts.map((d) => d.scanIds)).toEqual([[scanIds[0]], [scanIds[1]], [scanIds[2]]]);
+    expect(drafts.every((d) => d.status === 'pending')).toBe(true);
+    expect((await loadScans(db, scanIds)).map((s) => s.page)).toEqual([1, 1, 1]);
   });
 });
 

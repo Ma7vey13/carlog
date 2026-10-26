@@ -38,6 +38,50 @@ export function createDraftFromScans(db: CarlogDB, scanIds: Id[]): Promise<Id> {
   return newDraft(db, { source: 'chat', scanIds, payload: null, status: 'pending' });
 }
 
+/** "Добавить страницу": more pages of the same document (e.g. page 2 photographed later). */
+export async function addPagesToDraft(db: CarlogDB, id: Id, scanIds: Id[]): Promise<void> {
+  const draft = await db.drafts.get(id);
+  if (!draft) return;
+  const deviceId = await getDeviceId(db);
+  const all = [...draft.scanIds, ...scanIds];
+  await db.transaction('rw', [db.drafts, db.scans], async () => {
+    await db.drafts.update(id, { scanIds: all, updatedAt: nowIso(), deviceId });
+    // Keep page numbers continuous across the whole document.
+    for (const [i, scanId] of all.entries()) await db.scans.update(scanId, { page: i + 1 });
+  });
+}
+
+/**
+ * "Это разные документы": a PDF of several documents (like the test file of six) becomes one
+ * draft per page. The first page stays in this draft; the order of the new drafts follows the pages.
+ */
+export async function splitDraftByPages(db: CarlogDB, id: Id): Promise<Id[]> {
+  const draft = await db.drafts.get(id);
+  if (!draft || draft.scanIds.length < 2) return [id];
+  const deviceId = await getDeviceId(db);
+  const [first, ...rest] = draft.scanIds;
+  const base = Date.parse(draft.createdAt) || Date.now();
+  const created: Draft[] = rest.map((scanId, i) => ({
+    id: newId(),
+    // Older-to-newer by page, so the inbox (newest first) lists page 2 right after page 1.
+    createdAt: new Date(base - (i + 1)).toISOString(),
+    updatedAt: nowIso(),
+    deleted: false,
+    deviceId,
+    source: draft.source,
+    scanIds: [scanId],
+    payload: null,
+    status: 'pending',
+    visitId: null,
+  }));
+  await db.transaction('rw', [db.drafts, db.scans], async () => {
+    await db.drafts.update(id, { scanIds: [first!], payload: null, status: 'pending', updatedAt: nowIso(), deviceId });
+    await db.drafts.bulkAdd(created);
+    for (const scanId of draft.scanIds) await db.scans.update(scanId, { page: 1 });
+  });
+  return [id, ...created.map((d) => d.id)];
+}
+
 /** "Импорт JSON-файла" without scans: ready for review at once. */
 export function createDraftFromJson(db: CarlogDB, draft: DraftV1, source: DraftSource = 'chat'): Promise<Id> {
   return newDraft(db, { source, scanIds: [], payload: draft, status: 'ready' });
