@@ -16,6 +16,7 @@ interface Props {
   namesListId: string;
   issues: Record<string, string>;
   warnings: Record<string, string>;
+  review?: { flaggedLineKeys: ReadonlySet<string> } | undefined;
   onChange: (key: string, patch: Partial<DocumentForm>) => void;
   onRemove: (key: string) => void;
   onAddLine: (docKey: string, kind: LineKind) => void;
@@ -99,6 +100,7 @@ export function DocumentEditor(props: Props) {
             namesListId={namesListId}
             issues={issues}
             warnings={warnings}
+            review={props.review ? { flagged: props.review.flaggedLineKeys.has(line.key) } : undefined}
             onChange={(lineKey, patch) => props.onLineChange(doc.key, lineKey, patch)}
             onRemove={(lineKey) => props.onLineRemove(doc.key, lineKey)}
           />

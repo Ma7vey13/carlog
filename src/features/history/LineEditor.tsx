@@ -14,11 +14,13 @@ interface Props {
   namesListId: string;
   issues: Record<string, string>;
   warnings: Record<string, string>;
+  /** Review screen: the line has an unresolved check; offer a custom name and "Запомнить". */
+  review?: { flagged: boolean } | undefined;
   onChange: (key: string, patch: Partial<LineForm>) => void;
   onRemove: (key: string) => void;
 }
 
-function LineEditorImpl({ line, index, tree, regulation, namesListId, issues, warnings, onChange, onRemove }: Props) {
+function LineEditorImpl({ line, index, tree, regulation, namesListId, issues, warnings, review, onChange, onRemove }: Props) {
   const err = (field: string) => issues[`line:${line.key}:${field}`];
   const warn = (field: string) => warnings[`line:${line.key}:${field}`];
   const set = (patch: Partial<LineForm>) => onChange(line.key, patch);
@@ -27,10 +29,10 @@ function LineEditorImpl({ line, index, tree, regulation, namesListId, issues, wa
   const moreSummary = [position, line.brand, line.article, line.unit].filter(Boolean).join(' · ');
 
   return (
-    <div className="line" data-testid="line">
+    <div className={review?.flagged ? 'line line--flagged' : 'line'} data-testid="line" data-line-key={line.key}>
       <div className="line__head">
-        <span className="line__n" aria-hidden="true">
-          {index + 1}
+        <span className="line__n" aria-hidden="true" title={line.n !== null ? 'Номер строки в документе' : undefined}>
+          {line.n ?? index + 1}
         </span>
         <select
           className="input input--compact"
@@ -55,7 +57,13 @@ function LineEditorImpl({ line, index, tree, regulation, namesListId, issues, wa
         list={namesListId}
         autoComplete="off"
         error={err('rawName')}
-        hint={normalized && normalized !== line.rawName.trim() ? `Сохранится как: ${normalized}` : undefined}
+        hint={
+          line.nameOverride.trim()
+            ? `В истории: ${line.nameOverride.trim()}`
+            : normalized && normalized !== line.rawName.trim()
+              ? `Сохранится как: ${normalized}`
+              : undefined
+        }
         onChange={(e) => set({ rawName: e.target.value })}
       />
 
@@ -85,10 +93,23 @@ function LineEditorImpl({ line, index, tree, regulation, namesListId, issues, wa
         <Checkbox label="Запчасть клиента (принёс сам)" checked={line.customerPart} onChange={(customerPart) => set({ customerPart })} />
       )}
 
+      {review && line.bindingEdited && (
+        <Checkbox label="Запомнить для похожих строк" checked={line.remember} onChange={(remember) => onChange(line.key, { remember })} />
+      )}
+
       <details className="line__more">
         <summary>
           Подробнее{moreSummary ? <span className="muted">{' · ' + moreSummary}</span> : null}
         </summary>
+        {review && (
+          <TextField
+            label="Название в истории"
+            value={line.nameOverride}
+            placeholder={normalized}
+            hint="Пусто — как предложено автоматически"
+            onChange={(e) => set({ nameOverride: e.target.value })}
+          />
+        )}
         <div className="grid2">
           <SelectField label="Ось" value={line.axle ?? ''} onChange={(e) => set({ axle: (e.target.value || null) as LineForm['axle'] })}>
             <option value="">—</option>
