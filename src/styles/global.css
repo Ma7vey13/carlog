@@ -467,12 +467,13 @@ button {
   white-space: nowrap;
 }
 
-/* Toast (update prompt) */
+/* Toast (update prompt). At the top, under the app bar: the bottom of the screen belongs
+   to the tab bar and to sticky action bars such as "Сохранить визит". */
 .toast {
   position: fixed;
   left: var(--gutter);
   right: var(--gutter);
-  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 12px);
+  top: calc(env(safe-area-inset-top) + 64px);
   z-index: 30;
   display: flex;
   flex-wrap: wrap;
@@ -504,8 +505,10 @@ button {
 
 @media (min-width: 900px) {
   .toast {
-    left: calc(232px + 32px);
-    bottom: 24px;
+    left: auto;
+    right: 24px;
+    top: 16px;
+    width: 420px;
   }
 }
 
@@ -517,7 +520,7 @@ button {
   @keyframes toast-in {
     from {
       opacity: 0;
-      transform: translateY(8px);
+      transform: translateY(-8px);
     }
   }
 }

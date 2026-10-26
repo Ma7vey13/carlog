@@ -1,6 +1,9 @@
+import { useEffect } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
 const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000;
+/** The "saved for offline" notice is informational: it hides itself. */
+const OFFLINE_NOTICE_MS = 10_000;
 const RELOAD_FALLBACK_MS = 4000;
 
 /**
@@ -41,6 +44,12 @@ export function UpdatePrompt() {
       }, UPDATE_CHECK_INTERVAL_MS);
     },
   });
+
+  useEffect(() => {
+    if (!offlineReady) return;
+    const timer = setTimeout(() => setOfflineReady(false), OFFLINE_NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [offlineReady, setOfflineReady]);
 
   if (needRefresh) {
     return (

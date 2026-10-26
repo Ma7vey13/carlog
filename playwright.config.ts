@@ -34,7 +34,9 @@ export default defineConfig({
   webServer: {
     command: `npx vite build && npx vite preview --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}/carlog/`,
-    reuseExistingServer: !process.env.CI,
+    // Never reuse a running server: a leftover preview would serve an old build
+    // and the tests would silently check stale code. A busy port fails loudly instead.
+    reuseExistingServer: false,
     timeout: 180_000,
   },
 });
