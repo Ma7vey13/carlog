@@ -17,8 +17,10 @@ concurrency:
 
 jobs:
   test-and-build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Pinned: on the new ubuntu-latest (Ubuntu 26) installing Playwright's system
+    # packages took 17 minutes. 24.04 already has everything Chromium needs.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     env:
       CI: true
     steps:
@@ -38,8 +40,21 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      - name: Read Playwright version
+        id: pw
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browser
+        id: pw-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+
       - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 5
+        run: npx playwright install chromium
 
       - name: Smoke tests (360 px phone and desktop)
         run: npm run test:e2e
@@ -65,7 +80,7 @@ jobs:
   deploy:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: test-and-build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       pages: write
       id-token: write
