@@ -2,7 +2,9 @@
 
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { VisitBundle } from '../core/bundle';
-import type { Component, Id, MileageEntry, RegulationItem } from '../core/model';
+import type { Component, Draft, ExpectedPartRule, Id, MatchRule, MileageEntry, RegulationItem, Scan } from '../core/model';
+import { isOpenDraft, loadDrafts } from './drafts';
+import { loadScans } from './scans';
 import { getDb } from './db';
 import { loadMileage, loadVisitBundle, loadVisitBundles } from './visits';
 
@@ -26,6 +28,32 @@ export function useMileage(): MileageEntry[] | undefined {
 
 export function useRegulationItems(): RegulationItem[] | undefined {
   return useLiveQuery(async () => (await getDb().regulationItems.toArray()).filter((r) => !r.deleted), []);
+}
+
+export function useDrafts(): Draft[] | undefined {
+  return useLiveQuery(() => loadDrafts(getDb()), []);
+}
+
+export function useDraft(id: Id | null): Draft | null | undefined {
+  return useLiveQuery(async () => (id ? ((await getDb().drafts.get(id)) ?? null) : null), [id]);
+}
+
+/** Number of drafts waiting in the inbox (badge on the tab). */
+export function useOpenDraftCount(): number {
+  return useLiveQuery(async () => (await getDb().drafts.toArray()).filter(isOpenDraft).length, []) ?? 0;
+}
+
+export function useScans(ids: readonly Id[] | undefined): Scan[] | undefined {
+  const key = (ids ?? []).join(',');
+  return useLiveQuery(() => loadScans(getDb(), ids ?? []), [key]);
+}
+
+export function useExpectedPartRules(): ExpectedPartRule[] | undefined {
+  return useLiveQuery(async () => (await getDb().expectedPartRules.toArray()).filter((r) => !r.deleted).sort((a, b) => a.label.localeCompare(b.label, 'ru')), []);
+}
+
+export function useMatchRules(): MatchRule[] | undefined {
+  return useLiveQuery(async () => (await getDb().matchRules.toArray()).filter((r) => !r.deleted), []);
 }
 
 /** Components as a flat list in tree order, with depth for indentation. */

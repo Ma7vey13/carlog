@@ -3,6 +3,7 @@
 // and any edit by the owner wins a merge.
 
 import { START_COMPONENTS } from '../core/components';
+import { SEED_EXPECTED_PART_RULES } from '../core/expectedParts';
 import { SEED_TIMESTAMP, seedId } from '../core/ids';
 import type { Component, Settings, SyncFields, Vehicle } from '../core/model';
 import type { CarlogDB } from './db';
@@ -48,11 +49,15 @@ export const SEED_COMPONENTS: Component[] = START_COMPONENTS.map((c) => ({
  * (marked) component stays as the owner left it. Safe to run on every start.
  */
 export async function ensureSeed(db: CarlogDB): Promise<void> {
-  await db.transaction('rw', [db.vehicles, db.settings, db.components], async () => {
+  await db.transaction('rw', [db.vehicles, db.settings, db.components, db.expectedPartRules], async () => {
     if (!(await db.vehicles.get(VEHICLE_ID))) await db.vehicles.add(SEED_VEHICLE);
     if (!(await db.settings.get(SETTINGS_ID))) await db.settings.add(SEED_SETTINGS);
-    const existing = new Set(await db.components.bulkGet(SEED_COMPONENTS.map((c) => c.id)).then((rows) => rows.filter(Boolean).map((c) => c!.id)));
-    const missing = SEED_COMPONENTS.filter((c) => !existing.has(c.id));
-    if (missing.length) await db.components.bulkAdd(missing);
+    const components = await db.components.bulkGet(SEED_COMPONENTS.map((c) => c.id));
+    const missingComponents = SEED_COMPONENTS.filter((_, i) => !components[i]);
+    if (missingComponents.length) await db.components.bulkAdd(missingComponents);
+
+    const rules = await db.expectedPartRules.bulkGet(SEED_EXPECTED_PART_RULES.map((r) => r.id));
+    const missingRules = SEED_EXPECTED_PART_RULES.filter((_, i) => !rules[i]);
+    if (missingRules.length) await db.expectedPartRules.bulkAdd(missingRules);
   });
 }
