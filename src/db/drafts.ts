@@ -105,6 +105,31 @@ export async function rejectDraft(db: CarlogDB, id: Id): Promise<void> {
   await db.drafts.update(id, { status: 'rejected', updatedAt: nowIso(), deviceId });
 }
 
+/** "Отклонить все": every open draft to the archive in one transaction; scans stay. Returns how many. */
+export async function rejectAllOpenDrafts(db: CarlogDB): Promise<number> {
+  const deviceId = await getDeviceId(db);
+  const now = nowIso();
+  return db.transaction('rw', db.drafts, async () => {
+    const open = (await db.drafts.toArray()).filter(isOpenDraft);
+    for (const d of open) await db.drafts.update(d.id, { status: 'rejected', updatedAt: now, deviceId });
+    return open.length;
+  });
+}
+
+/** "Вернуть все отклонённые": undo for a mistaken "Отклонить все". Returns how many. */
+export async function restoreAllRejectedDrafts(db: CarlogDB): Promise<number> {
+  const deviceId = await getDeviceId(db);
+  const now = nowIso();
+  return db.transaction('rw', db.drafts, async () => {
+    const rejected = (await db.drafts.toArray()).filter((d) => !d.deleted && d.status === 'rejected');
+    for (const d of rejected) {
+      const status = d.payload || d.source === 'manual' ? 'ready' : 'pending';
+      await db.drafts.update(d.id, { status, updatedAt: now, deviceId });
+    }
+    return rejected.length;
+  });
+}
+
 /** Back from the archive to the inbox. */
 export async function restoreDraft(db: CarlogDB, id: Id): Promise<void> {
   const draft = await db.drafts.get(id);

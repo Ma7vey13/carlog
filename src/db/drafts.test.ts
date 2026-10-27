@@ -9,7 +9,19 @@ import { filterVisits } from '../core/search';
 import { updateLine } from '../core/visitForm';
 import { CarlogDB } from './db';
 import { resetDeviceIdCache } from './device';
-import { createDraftFromJson, createDraftFromScans, isOpenDraft, loadDrafts, rejectDraft, restoreDraft, saveReviewedDraft, setDraftPayload, splitDraftByPages } from './drafts';
+import {
+  createDraftFromJson,
+  createDraftFromScans,
+  isOpenDraft,
+  loadDrafts,
+  rejectAllOpenDrafts,
+  rejectDraft,
+  restoreAllRejectedDrafts,
+  restoreDraft,
+  saveReviewedDraft,
+  setDraftPayload,
+  splitDraftByPages,
+} from './drafts';
 import { loadScanBlob, loadScans, rotateScan, storeScans } from './scans';
 import { ensureSeed } from './seed';
 import { loadMileage, loadVisitBundle, loadVisitBundles } from './visits';
@@ -74,6 +86,30 @@ describe('splitDraftByPages', () => {
     expect(drafts.map((d) => d.scanIds)).toEqual([[scanIds[0]], [scanIds[1]], [scanIds[2]]]);
     expect(drafts.every((d) => d.status === 'pending')).toBe(true);
     expect((await loadScans(db, scanIds)).map((s) => s.page)).toEqual([1, 1, 1]);
+  });
+});
+
+describe('bulk reject / restore', () => {
+  it('rejects every open draft at once, leaves accepted ones, and can bring them all back', async () => {
+    const scanIds = await storeScans(db, [page('a'), page('b'), page('c')]);
+    const pending = await createDraftFromScans(db, scanIds);
+    await splitDraftByPages(db, pending); // 3 pending drafts
+    const ready = await createDraftFromJson(db, PAGE2_ACT);
+    const accepted = await createDraftFromJson(db, PAGE5_ACT);
+    await saveReviewedDraft(db, { draftId: accepted, form: draftToForm(PAGE5_ACT), decision: { mode: 'new' } });
+
+    expect(await rejectAllOpenDrafts(db)).toBe(4);
+    const after = await loadDrafts(db);
+    expect(after.filter(isOpenDraft)).toEqual([]);
+    expect(after.find((d) => d.id === accepted)?.status).toBe('accepted');
+    expect(await db.scans.count()).toBe(3); // scans stay
+
+    expect(await restoreAllRejectedDrafts(db)).toBe(4);
+    const restored = await loadDrafts(db);
+    expect(restored.filter((d) => d.status === 'pending')).toHaveLength(3);
+    expect(restored.find((d) => d.id === ready)?.status).toBe('ready');
+    expect(await rejectAllOpenDrafts(db)).toBe(4);
+    expect(await rejectAllOpenDrafts(db)).toBe(0);
   });
 });
 

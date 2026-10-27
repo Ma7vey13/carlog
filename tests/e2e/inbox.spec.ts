@@ -169,6 +169,15 @@ test('PDF with two pages: paging and rotation that survives a reload', async ({ 
   await page.getByRole('dialog', { name: 'Разделить по страницам?' }).getByRole('button', { name: 'Разделить' }).click();
   await expect(page.getByTestId('draft-row')).toHaveCount(2);
   await expect(page.getByTestId('inbox-badge')).toHaveText('2');
+
+  // "Отклонить все" sends every draft to the archive at once; "Вернуть все" brings them back.
+  await page.getByRole('button', { name: 'Отклонить все' }).click();
+  await page.getByRole('dialog', { name: 'Отклонить все черновики?' }).getByRole('button', { name: 'Отклонить 2' }).click();
+  await expect(page.getByText('Входящих нет')).toBeVisible();
+  await expect(page.getByTestId('inbox-badge')).toHaveCount(0);
+  await page.getByText('Архив (2)').click();
+  await page.getByRole('button', { name: 'Вернуть все отклонённые (2)' }).click();
+  await expect(page.getByRole('list', { name: 'Черновики' }).getByTestId('draft-row')).toHaveCount(2);
 });
 
 test('reject goes to the archive and can be restored', async ({ page }) => {

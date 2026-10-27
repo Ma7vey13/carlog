@@ -4,7 +4,7 @@ import { ComponentsScreen } from './ComponentsScreen';
 import { PartRulesScreen } from './PartRulesScreen';
 import { getStorageInfo, requestPersistence, type StorageInfo } from '../../app/storage';
 import { THEME_LABELS, useTheme, type ThemeChoice } from '../../app/theme';
-import { formatBytes, formatDate } from '../../core/format';
+import { formatBytes, formatLocalDate } from '../../core/format';
 
 const THEME_ORDER: ThemeChoice[] = ['system', 'light', 'dark'];
 
@@ -157,7 +157,7 @@ function AboutSection() {
         </div>
         <div>
           <dt>Сборка</dt>
-          <dd>{formatDate(__BUILD_TIME__)}</dd>
+          <dd>{formatLocalDate(__BUILD_TIME__)}</dd>
         </div>
       </dl>
       <p className="hint">

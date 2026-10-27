@@ -392,3 +392,15 @@
 .rule-row__words {
   font-size: 13px;
 }
+
+/* Inbox bulk actions */
+.inbox-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.archive__restore-all {
+  justify-self: start;
+}

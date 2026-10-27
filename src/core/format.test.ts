@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatBytes, formatDate, formatKm, groupThousands } from './format';
+import { formatBytes, formatDate, formatKm, formatLocalDate, groupThousands } from './format';
 
 const NBSP = ' ';
 
@@ -14,6 +14,15 @@ describe('formatDate', () => {
     expect(formatDate(null)).toBe('');
     expect(formatDate('')).toBe('');
     expect(formatDate('22.07.25')).toBe('');
+  });
+});
+
+describe('formatLocalDate', () => {
+  it('uses the local calendar day of a timestamp', () => {
+    const lateEvening = new Date(2026, 9, 28, 0, 30); // 00:30 local = still the 27th in UTC for UTC+3
+    expect(formatLocalDate(lateEvening.toISOString())).toBe('28.10.2026');
+    expect(formatLocalDate('')).toBe('');
+    expect(formatLocalDate('not a date')).toBe('');
   });
 });
 

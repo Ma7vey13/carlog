@@ -10,6 +10,19 @@ export function formatDate(iso: string | null | undefined): string {
   return `${m[3]}.${m[2]}.${m[1]}`;
 }
 
+/**
+ * Timestamp (`createdAt`, build time) → local calendar date `ДД.ММ.ГГГГ`.
+ * formatDate() on a UTC timestamp would show yesterday at night in Moscow (DECISIONS D-011).
+ */
+export function formatLocalDate(timestamp: string | null | undefined): string {
+  if (!timestamp) return '';
+  const d = new Date(timestamp);
+  if (Number.isNaN(d.getTime())) return '';
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `${dd}.${mm}.${d.getFullYear()}`;
+}
+
 /** Groups thousands with a non-breaking space: 303700 → "303 700". */
 export function groupThousands(n: number): string {
   const sign = n < 0 ? '-' : '';
