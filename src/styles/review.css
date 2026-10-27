@@ -404,3 +404,38 @@
 .archive__restore-all {
   justify-self: start;
 }
+
+/* Sync */
+.remote-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px var(--gutter);
+  background: var(--accent-soft);
+  border-bottom: 1px solid var(--border);
+}
+
+.remote-banner span {
+  flex: 1 1 200px;
+}
+
+@media (min-width: 900px) {
+  .remote-banner {
+    /* Same column as the content cards (944px minus 2 × 32px padding). */
+    width: calc(100% - 64px);
+    max-width: 880px;
+    margin: 8px auto 0;
+    padding: 10px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+}
+
+.big-warning {
+  border-left: 5px solid var(--status-red);
+}
+
+.big-warning .notice__title {
+  font-size: 17px;
+}

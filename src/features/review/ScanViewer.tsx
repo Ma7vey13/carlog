@@ -3,6 +3,7 @@ import type { Scan } from '../../core/model';
 import { getDb } from '../../db/db';
 import { loadScanBlob, rotateScan } from '../../db/scans';
 import { rotatedCopy } from '../../scan/process';
+import { fetchScanOnDemand } from '../../sync/session';
 import { BackIcon } from '../../ui/icons';
 
 const ZOOMS = [1, 1.5, 2, 3] as const;
@@ -13,16 +14,22 @@ const NEXT_ROTATION: Record<Scan['rotation'], Scan['rotation']> = { 0: 90, 90: 1
  * Returns null until the image for exactly this page and rotation is ready, so the viewer never
  * shows the previous page under the new page's number.
  */
-function usePageUrl(scan: Scan | undefined): string | null {
+function usePageUrl(scan: Scan | undefined): string | null | 'missing' {
   const key = scan ? `${scan.id}|${scan.rotation}` : '';
-  const [state, setState] = useState<{ key: string; url: string } | null>(null);
+  const [state, setState] = useState<{ key: string; url: string | 'missing' } | null>(null);
   useEffect(() => {
     if (!scan) return;
     let cancelled = false;
     let created: string | null = null;
     (async () => {
-      const blob = await loadScanBlob(getDb(), scan.sha256);
-      if (!blob || cancelled) return;
+      let blob = await loadScanBlob(getDb(), scan.sha256);
+      // Not on this device yet (phones download scans on demand): fetch it from GitHub.
+      if (!blob && (await fetchScanOnDemand(scan.sha256))) blob = await loadScanBlob(getDb(), scan.sha256);
+      if (cancelled) return;
+      if (!blob) {
+        setState({ key, url: 'missing' });
+        return;
+      }
       const shown = await rotatedCopy(blob, scan.rotation);
       if (cancelled) return;
       created = URL.createObjectURL(shown);
@@ -88,7 +95,12 @@ export function ScanViewer({ scans, label = 'Скан' }: { scans: readonly Scan
         </div>
       </div>
       <div className="viewer__frame" tabIndex={0} aria-label={`Страница ${index + 1}`}>
-        {url ? (
+        {url === 'missing' ? (
+          <p className="muted viewer__loading" data-testid="scan-missing">
+            Скан хранится на GitHub и ещё не скачан на это устройство. Подключитесь к интернету и введите пароль синхронизации («Ещё → Синхронизация»),
+            затем откройте скан снова.
+          </p>
+        ) : url ? (
           <img className="viewer__img" src={url} alt={`${label}, страница ${index + 1}`} style={{ width: `${zoom * 100}%` }} data-rotation={scan?.rotation ?? 0} />
         ) : (
           <p className="muted viewer__loading">Загружаю…</p>
@@ -101,5 +113,5 @@ export function ScanViewer({ scans, label = 'Скан' }: { scans: readonly Scan
 /** Small first-page preview for lists. */
 export function ScanThumb({ scan }: { scan: Scan | undefined }) {
   const url = usePageUrl(scan);
-  return <span className="thumb">{url ? <img src={url} alt="" /> : null}</span>;
+  return <span className="thumb">{url && url !== 'missing' ? <img src={url} alt="" /> : null}</span>;
 }

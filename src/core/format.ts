@@ -23,6 +23,14 @@ export function formatLocalDate(timestamp: string | null | undefined): string {
   return `${dd}.${mm}.${d.getFullYear()}`;
 }
 
+/** Timestamp → local "ДД.ММ.ГГГГ ЧЧ:ММ". */
+export function formatLocalDateTime(timestamp: string | null | undefined): string {
+  const date = formatLocalDate(timestamp);
+  if (!date) return '';
+  const d = new Date(timestamp!);
+  return `${date} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 /** Groups thousands with a non-breaking space: 303700 → "303 700". */
 export function groupThousands(n: number): string {
   const sign = n < 0 ? '-' : '';

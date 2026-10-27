@@ -4,12 +4,15 @@ import { App } from './app/App';
 import { requestPersistenceOnFirstRun } from './app/storage';
 import { getDb } from './db/db';
 import { ensureSeed } from './db/seed';
+import { startSession } from './sync/session';
 import './styles/global.css';
 import './styles/forms.css';
 import './styles/review.css';
 
 void requestPersistenceOnFirstRun();
-ensureSeed(getDb()).catch((err: unknown) => console.error('Не удалось подготовить базу данных', err));
+ensureSeed(getDb())
+  .then(() => startSession())
+  .catch((err: unknown) => console.error('Не удалось подготовить базу данных', err));
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

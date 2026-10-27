@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { hrefFor, type Route } from '../../app/routes';
 import { ComponentsScreen } from './ComponentsScreen';
 import { PartRulesScreen } from './PartRulesScreen';
+import { SyncPanel } from '../sync/SyncPanel';
+import { SyncScreen } from '../sync/SyncScreen';
 import { getStorageInfo, requestPersistence, type StorageInfo } from '../../app/storage';
 import { THEME_LABELS, useTheme, type ThemeChoice } from '../../app/theme';
 import { formatBytes, formatLocalDate } from '../../core/format';
@@ -11,8 +13,10 @@ const THEME_ORDER: ThemeChoice[] = ['system', 'light', 'dark'];
 export function MoreScreen({ route }: { route: Route }) {
   if (route.rest[0] === 'components') return <ComponentsScreen />;
   if (route.rest[0] === 'part-rules') return <PartRulesScreen />;
+  if (route.rest[0] === 'sync') return <SyncScreen route={route} />;
   return (
     <div className="stack">
+      <SyncPanel compact />
       <section className="card">
         <h2 className="card__title">Данные</h2>
         <a className="menu-link" href={hrefFor('/more/components')}>
@@ -161,7 +165,7 @@ function AboutSection() {
         </div>
       </dl>
       <p className="hint">
-        Все данные хранятся на этом устройстве. Синхронизация между телефоном и компьютером появится на этапе 4.
+        Данные хранятся на этом устройстве; на GitHub уходят только в зашифрованном виде, кнопкой «Отправить».
       </p>
     </section>
   );

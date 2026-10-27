@@ -4,6 +4,7 @@ import { MoreScreen } from '../features/more/MoreScreen';
 import { InboxScreen } from '../features/inbox/InboxScreen';
 import { RegulationScreen, StateScreen } from '../features/placeholders';
 import { useOpenDraftCount } from '../db/hooks';
+import { RemoteBanner } from '../features/sync/RemoteBanner';
 import { BackIcon, CloudOffIcon, TAB_ICONS } from '../ui/icons';
 import { PageHeaderContext, type PageHeader } from './pageHeader';
 import { hrefFor, TABS, type Route, type TabId } from './routes';
@@ -82,6 +83,7 @@ export function App() {
               </span>
             )}
           </header>
+          <RemoteBanner />
           <main className="content" id="main">
             {Screen ? (
               <Screen route={route} />
