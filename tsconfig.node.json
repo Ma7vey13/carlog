@@ -1,5 +1,5 @@
 {
-  // Build configs, e2e tests and Node tools.
+  // Build configs, unit and e2e tests, Node tools.
   "compilerOptions": {
     "target": "es2022",
     "lib": ["es2023", "dom"],
@@ -11,7 +11,7 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["node"]
+    "types": ["node", "vite/client"]
   },
-  "include": ["vite.config.ts", "playwright.config.ts", "tests/e2e"]
+  "include": ["vite.config.ts", "playwright.config.ts", "tests", "src/**/*.test.ts", "src/env.d.ts"]
 }
