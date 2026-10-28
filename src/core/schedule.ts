@@ -9,7 +9,7 @@
 import { activeDocuments, type VisitBundle } from './bundle';
 import { addDays, addMonths, daysBetween } from './dates';
 import type { Id, IsoDate, ManualEvent, RegulationItem, Settings } from './model';
-import { forecastKm, type MileagePoint } from './mileage';
+import { dailyAverage, forecastKm, type MileagePoint } from './mileage';
 import { matchKey } from './normalize';
 
 export type ScheduleStatus = 'red' | 'yellow' | 'green' | 'gray';
@@ -27,11 +27,10 @@ export interface Execution {
 }
 
 export interface CurrentMileage {
+  /** The last odometer reading on or before today. */
   km: number;
-  /** true when this is a forecast, not a reading of today. */
-  estimated: boolean;
-  lastDate: IsoDate;
-  lastKm: number;
+  date: IsoDate;
+  /** km per day over the readings: only to sort by urgency, never shown as a mileage. */
   dailyAvg: number | null;
 }
 
@@ -48,8 +47,6 @@ export interface ItemSchedule {
   dueKm: number | null;
   dueDate: IsoDate | null;
   remainingKm: number | null;
-  /** remainingKm is counted from a forecast of today's mileage, not a reading. */
-  remainingKmEstimated: boolean;
   remainingDays: number | null;
   /** Rough days until due (km converted with the average daily mileage) — for sorting. */
   urgencyDays: number | null;
@@ -59,11 +56,15 @@ export type Thresholds = Pick<Settings, 'warnPercent' | 'warnKm' | 'warnDays' | 
 
 export const DEFAULT_THRESHOLDS: Thresholds = { warnPercent: 10, warnKm: 1000, warnDays: 30, severeConditions: false };
 
-/** Today's mileage: the last reading, plus the average daily mileage × days since (SPEC section 9). */
+/**
+ * Today's mileage: the last reading as entered, with no forecast added (D-088 — the owner did not
+ * want the mileage to grow by itself). Remaining km are counted from it.
+ */
 export function currentMileage(points: readonly MileagePoint[], today: IsoDate): CurrentMileage | null {
-  const f = forecastKm(points, today);
-  if (!f) return null;
-  return { km: f.km, estimated: f.km !== f.lastKm || f.lastDate !== today, lastDate: f.lastDate, lastKm: f.lastKm, dailyAvg: f.dailyAvg };
+  const before = points.filter((p) => p.date <= today);
+  const last = before[before.length - 1];
+  if (!last) return null;
+  return { km: last.km, date: last.date, dailyAvg: dailyAverage(before) };
 }
 
 function visitExecution(b: VisitBundle, points: readonly MileagePoint[]): Execution {
@@ -109,7 +110,7 @@ export function scheduleItem(
   const last = executions[0] ?? null;
   const iv = intervalsOf(item, ctx.thresholds.severeConditions);
   const base = { item, executions, last, intervalKm: iv.km, intervalMonths: iv.months, severeUsed: iv.severeUsed };
-  const empty = { dueKm: null, dueDate: null, remainingKm: null, remainingKmEstimated: false, remainingDays: null, urgencyDays: null };
+  const empty = { dueKm: null, dueDate: null, remainingKm: null, remainingDays: null, urgencyDays: null };
 
   if (!iv.km && !iv.months) return { ...base, ...empty, status: 'gray', grayReason: 'no-interval' };
   if (!last) return { ...base, ...empty, status: 'gray', grayReason: 'no-data' };
@@ -133,8 +134,7 @@ export function scheduleItem(
   const kmAsDays = remainingKm !== null && avg ? remainingKm / avg : null;
   const urgencyDays = [kmAsDays, remainingDays].filter((x): x is number => x !== null).reduce<number | null>((m, x) => (m === null || x < m ? x : m), null);
 
-  const remainingKmEstimated = remainingKm !== null && !!current?.estimated;
-  return { ...base, status, grayReason: null, dueKm, dueDate, remainingKm, remainingKmEstimated, remainingDays, urgencyDays };
+  return { ...base, status, grayReason: null, dueKm, dueDate, remainingKm, remainingDays, urgencyDays };
 }
 
 const ORDER: Record<ScheduleStatus, number> = { red: 0, yellow: 1, gray: 2, green: 3 };

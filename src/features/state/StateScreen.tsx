@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { hrefFor, type Route } from '../../app/routes';
-import { formatDate, formatKm, formatLocalDateTime, groupThousands, plural } from '../../core/format';
+import { formatDate, formatKm, formatLocalDateTime, plural } from '../../core/format';
 import { SCHEDULE_STATUS_LABELS } from '../../core/labels';
 import type { RegulationItem } from '../../core/model';
 import type { CurrentMileage, ItemSchedule } from '../../core/schedule';
@@ -14,6 +14,7 @@ import { RegulationIcon } from '../../ui/icons';
 import { selfCheckText, type SelfCheckStatus } from '../../core/selfCheck';
 import type { TermStatus } from '../../core/termDocs';
 import { useSyncState, useUnsentCount } from '../sync/SyncPanel';
+import { useSession } from '../../sync/session';
 import { SelfCheckScreen, useSelfCheck } from './SelfCheckScreen';
 import { TermDocsScreen, TermRow, useTermStatuses } from './TermDocsScreen';
 import { ComponentCard } from './ComponentCard';
@@ -171,7 +172,7 @@ export function ScheduleRow({ s, onMark, backTo }: { s: ItemSchedule; onMark?: (
   );
 }
 
-/** Current mileage (real or forecast) with the quick "Обновить пробег" field. */
+/** The last odometer reading (no forecast, D-088) with the quick "Обновить пробег" field. */
 function MileageCard({ current, today }: { current: CurrentMileage | null; today: string }) {
   const [km, setKm] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -183,8 +184,8 @@ function MileageCard({ current, today }: { current: CurrentMileage | null; today
       setError('Целое число километров, например 310500');
       return;
     }
-    if (current && value < current.lastKm) {
-      setError(`Меньше прошлой отметки (${formatKm(current.lastKm)} от ${formatDate(current.lastDate)}). Ошибочную отметку можно удалить в «Истории».`);
+    if (current && value < current.km) {
+      setError(`Меньше прошлой отметки (${formatKm(current.km)} от ${formatDate(current.date)}). Ошибочную отметку можно удалить в «Истории».`);
       return;
     }
     await addManualMileage(getDb(), today, value);
@@ -197,12 +198,11 @@ function MileageCard({ current, today }: { current: CurrentMileage | null; today
     <section className="card mileage-card" aria-label="Пробег">
       <p className="mileage-card__label">Пробег</p>
       <p className="mileage-card__km" data-testid="current-km">
-        {current ? `${current.estimated ? '≈ ' : ''}${formatKm(current.km)}` : 'не отмечен'}
+        {current ? formatKm(current.km) : 'не отмечен'}
       </p>
-      {current?.estimated && (
+      {current && (
         <p className="hint" data-testid="mileage-basis">
-          Прогноз: отметка {formatKm(current.lastKm)} от {formatDate(current.lastDate)}
-          {current.dailyAvg ? `, в среднем ${groupThousands(Math.round(current.dailyAvg))} км в день` : ''}
+          {current.date === today ? 'Отмечен сегодня' : `Отмечен ${formatDate(current.date)}`}
         </p>
       )}
       <form
@@ -251,6 +251,7 @@ function MileageCard({ current, today }: { current: CurrentMileage | null; today
 function SyncLine() {
   const s = useSyncState();
   const unsent = useUnsentCount(s);
+  const session = useSession();
   if (!s) return null;
   if (!s.config) {
     return (
@@ -264,6 +265,7 @@ function SyncLine() {
   }
   const parts = [s.lastPush ? `отправлено ${formatLocalDateTime(s.lastPush.at)}` : 'ещё не отправляли'];
   if (unsent) parts.push(`не отправлено изменений: ${unsent}`);
+  if (s.autoSync && !session.key) parts.push('сама не отправится: введите пароль');
   return (
     <a className="menu-link card" href={hrefFor('/more/sync')} data-testid="sync-line">
       <span>Синхронизация: {parts.join(' · ')}</span>

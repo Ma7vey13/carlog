@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ALL_PAGES } from '../../tests/fixtures/drafts';
-import { AIR_FILTER, ALT_BELT, CABIN_FILTER, COOLANT, FIXTURE_REGULATION, HOSES, OIL, PLUGS, REAR_PADS, TODAY, TRANSFER_OIL } from '../../tests/fixtures/regulation';
+import { AIR_FILTER, ALT_BELT, CABIN_FILTER, COOLANT, FIXTURE_REGULATION, HOSES, OIL, PLUGS, REAR_PADS, TODAY, TODAY_KM, TRANSFER_OIL } from '../../tests/fixtures/regulation';
 import { draftToBundle } from '../../tests/helpers';
 import type { VisitBundle } from './bundle';
 import { suggestRegulationIds, unlinkedMatchingLines } from './keywords';
@@ -31,8 +31,9 @@ const manual = (date: string, km: number | null, regulationItemId: string, appro
   note: '',
 });
 
+/** The history plus an odometer reading of TODAY_KM on TODAY. */
 function ctx(bundles: VisitBundle[], events: ManualEvent[] = [], thresholds: Thresholds = DEFAULT_THRESHOLDS, today = TODAY) {
-  const points = mileagePoints(bundles.flatMap((b) => (b.mileage ? [b.mileage] : [])));
+  const points = [...mileagePoints(bundles.flatMap((b) => (b.mileage ? [b.mileage] : []))), { date: TODAY, km: TODAY_KM }];
   return { bundles, events, points, today, thresholds };
 }
 
@@ -40,10 +41,12 @@ describe('schedule on the fixture regulation', () => {
   const bundles = history();
   const c = ctx(bundles);
 
-  it('forecasts today’s mileage from the history', () => {
-    const cur = currentMileage(c.points, TODAY)!;
-    // 293 000 (12.03.25) → 303 700 (30.10.25): 46.1 km/day × 122 days
-    expect(cur).toMatchObject({ km: 309327, estimated: true, lastDate: '2025-10-30', lastKm: 303700 });
+  it('takes today’s mileage from the last reading, with no forecast added (D-088)', () => {
+    expect(currentMileage(c.points, TODAY)).toMatchObject({ km: TODAY_KM, date: TODAY });
+    // without today's reading: the last one stays as it is, it does not grow by the average
+    const history = c.points.filter((p) => p.date < TODAY);
+    expect(currentMileage(history, TODAY)).toMatchObject({ km: 303700, date: '2025-10-30' });
+    expect(scheduleItem(OIL, { ...c, points: history })).toMatchObject({ remainingKm: 10000, remainingDays: 243 });
   });
 
   it('gives the expected status for every item', () => {

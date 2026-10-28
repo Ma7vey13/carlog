@@ -75,7 +75,8 @@ describe('regulation items', () => {
     expect(unlinkedMatchingLines(await loadVisitBundles(db), item)).toEqual([]);
 
     const s = await schedule(id, '2026-10-28');
-    expect(s).toMatchObject({ dueKm: 313700, dueDate: '2026-10-30', status: 'red' });
+    // no reading after the visit: 10 000 km are left (no forecast), but only 2 days
+    expect(s).toMatchObject({ dueKm: 313700, dueDate: '2026-10-30', remainingKm: 10000, status: 'yellow' });
     expect(s.last).toMatchObject({ date: '2025-10-30', km: 303700, source: 'visit' });
   });
 

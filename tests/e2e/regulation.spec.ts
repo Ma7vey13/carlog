@@ -60,10 +60,10 @@ test('oil 10 000 km / 12 months is due from the visit of 30.10.2025', async ({ p
   await expect(page.getByTestId('item-status')).toContainText('Скоро'); // 2 days left
   await expect(page.getByTestId('executions')).toContainText(S('30.10.2025, 303 700 км'));
 
-  // Main screen: forecast mileage, the item among the urgent ones.
+  // Main screen: the last reading as it is (no forecast), the item among the urgent ones.
   await page.goto('./');
-  await expect(page.getByTestId('current-km')).toHaveText(S('≈ 303 700 км'));
-  await expect(page.getByTestId('mileage-basis')).toContainText('от 30.10.2025');
+  await expect(page.getByTestId('current-km')).toHaveText(S('303 700 км'));
+  await expect(page.getByTestId('mileage-basis')).toHaveText('Отмечен 30.10.2025');
   const row = page.getByTestId('sched-row').filter({ hasText: 'Масло двигателя' });
   await expect(row).toHaveAttribute('data-status', 'yellow');
 
@@ -71,7 +71,7 @@ test('oil 10 000 km / 12 months is due from the visit of 30.10.2025', async ({ p
   await page.getByLabel('Обновить пробег, км').fill('314 000');
   await page.getByRole('button', { name: 'Сохранить' }).click();
   await expect(page.getByTestId('current-km')).toHaveText(S('314 000 км'));
-  await expect(page.getByTestId('mileage-basis')).toBeHidden();
+  await expect(page.getByTestId('mileage-basis')).toHaveText('Отмечен сегодня');
   await expect(row).toHaveAttribute('data-status', 'red');
   await expect(row).toContainText(S('просрочено на 300 км'));
 

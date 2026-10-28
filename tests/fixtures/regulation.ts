@@ -6,6 +6,8 @@ import { seedId } from '../../src/core/ids';
 import type { RegulationItem } from '../../src/core/model';
 
 export const TODAY = '2026-03-01';
+/** The odometer read on TODAY (there is no forecast, D-088): the statuses are computed from it. */
+export const TODAY_KM = 309327;
 
 const T = '2026-01-01T00:00:00.000Z';
 let next = 900;
