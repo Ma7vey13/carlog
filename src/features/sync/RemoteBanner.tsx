@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { checkRemote, runSync, useSession } from '../../sync/session';
 
-/** "На GitHub есть новые данные" — offered, never applied automatically (SPEC section 8). */
+/** "На GitHub есть новые данные" (SPEC section 8). With automatic sync on, AutoSync pulls them by itself. */
 export function RemoteBanner() {
   const session = useSession();
 

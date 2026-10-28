@@ -33,6 +33,8 @@ export interface SyncState {
   appliedDraftFiles: string[];
   /** Download every scan on pull (computer) or only when opened (phone, default). */
   downloadAllScans: boolean;
+  /** Push changes and pull other devices' ones by itself while the key is known (D-090). */
+  autoSync: boolean;
 }
 
 const KEY = 'sync';
@@ -49,6 +51,7 @@ const EMPTY: SyncState = {
   scanIndex: {},
   appliedDraftFiles: [],
   downloadAllScans: false,
+  autoSync: true,
 };
 
 export async function loadSyncState(db: CarlogDB): Promise<SyncState> {

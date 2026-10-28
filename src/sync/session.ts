@@ -157,6 +157,10 @@ export async function setDownloadAllScans(on: boolean) {
   await saveSyncState(getDb(), { downloadAllScans: on });
 }
 
+export async function setAutoSync(on: boolean) {
+  await saveSyncState(getDb(), { autoSync: on });
+}
+
 /** "Сменить пароль" on this device: re-encrypts carlog-data and switches the session key. */
 export async function changePasswordInSession(currentPassword: string, newPassword: string, onProgress: (m: string) => void): Promise<number> {
   const db = getDb();

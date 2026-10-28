@@ -60,6 +60,13 @@ async function syncButton(page: Page, name: 'Отправить' | 'Подтян
   await expect(page.getByTestId('sync-done')).toBeVisible({ timeout: 30_000 });
 }
 
+async function setAutoSync(page: Page, on: boolean) {
+  await page.goto('./#/more/sync');
+  const box = page.getByLabel('Синхронизировать автоматически');
+  if ((await box.isChecked()) !== on) await box.click(); // saved to the device, then shown
+  await expect(page.getByTestId('auto-sync')).toHaveText(on ? 'включено' : 'выключено');
+}
+
 async function historyDates(page: Page): Promise<string[]> {
   await page.goto('./#/history');
   const rows = page.getByTestId('visit-row');
@@ -96,23 +103,32 @@ test('phone and computer exchange data; nothing readable on GitHub except vault.
   await expect(pc.page.getByTestId('setup-done')).toContainText('Данные с других устройств подтянуты', { timeout: 30_000 });
   expect(await historyDates(pc.page)).toEqual(['12.03.2025']);
 
-  // --- Computer → phone: the phone offers "Подтянуть" on start ------------------------------------
+  // --- Computer → phone with no buttons (D-090): sent ~10 s after the edit, pulled on start --------
   await addVisit(pc.page, '2025-07-22', '298000', 'ТО двигателя');
-  await syncButton(pc.page, 'Отправить');
   await pc.page.goto('./#/more');
-  await expect(pc.page.getByTestId('unsent')).toHaveText('0');
+  await expect(pc.page.getByTestId('auto-sync')).toHaveText('включено');
+  await expect(pc.page.getByTestId('unsent')).toHaveText('0', { timeout: 30_000 });
   await phone.page.reload();
-  await phone.page.goto('./#/history');
-  await expect(phone.page.getByTestId('remote-banner')).toBeVisible({ timeout: 30_000 });
-  await phone.page.getByTestId('remote-banner').getByRole('button', { name: 'Подтянуть' }).click();
-  await expect(phone.page.getByTestId('remote-banner')).toBeHidden({ timeout: 30_000 });
-  expect(await historyDates(phone.page)).toEqual(['12.03.2025', '22.07.2025']);
+  await expect.poll(() => historyDates(phone.page), { timeout: 30_000 }).toEqual(['12.03.2025', '22.07.2025']);
+  await expect(phone.page.getByTestId('remote-banner')).toBeHidden();
 
-  // --- Both change without syncing: nothing is lost ----------------------------------------------
+  // --- Both change without syncing (automatic sync off): nothing is lost --------------------------
+  await setAutoSync(phone.page, false);
+  await setAutoSync(pc.page, false);
   await addVisit(phone.page, '2025-10-30', '303700', 'Масло АКПП');
   await addVisit(pc.page, '2025-04-11', '295000', 'Воздушный фильтр');
   await phone.page.goto('./#/more');
   await expect(phone.page.getByTestId('unsent')).not.toHaveText('0');
+  // closing the tab now would leave the changes here only: the browser warns
+  const warned = new Promise<string>((resolve) =>
+    phone.page.once('dialog', (d) => {
+      resolve(d.type());
+      void d.dismiss();
+    }),
+  );
+  await phone.page.close({ runBeforeUnload: true });
+  expect(await warned).toBe('beforeunload');
+  expect(phone.page.isClosed()).toBe(false);
   await syncButton(phone.page, 'Отправить');
   await syncButton(pc.page, 'Отправить');
   await expect(pc.page.getByTestId('sync-done')).toContainText('подтянуты изменения с другого устройства');

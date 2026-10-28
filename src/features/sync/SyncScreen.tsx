@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { usePageHeader } from '../../app/pageHeader';
 import { hrefFor, type Route } from '../../app/routes';
 import { getDb } from '../../db/db';
-import { setDownloadAllScans, setSessionKey } from '../../sync/session';
+import { setAutoSync, setDownloadAllScans, setSessionKey } from '../../sync/session';
 import { forgetKey, loadRememberedKey, resetSyncState } from '../../sync/state';
 import { ConfirmDialog } from '../../ui/Dialog';
 import { Checkbox } from '../../ui/Field';
@@ -41,6 +41,11 @@ function SyncSettings() {
               </dd>
             </div>
           </dl>
+          <Checkbox label="Синхронизировать автоматически" checked={s.autoSync} onChange={(on) => void setAutoSync(on)} />
+          <p className="hint">
+            Изменения отправляются сами через 10 секунд после правки и сразу, когда вы уходите из приложения; изменения с другого устройства подтягиваются при
+            открытии и каждые 5 минут. Нужен пароль, запомненный на этом устройстве (или введённый в этот раз).
+          </p>
           <Checkbox label="Скачивать все сканы при «Подтянуть»" checked={s.downloadAllScans} onChange={(on) => void setDownloadAllScans(on)} />
           <p className="hint">Выключено — сканы скачиваются, только когда их открывают (экономит место на телефоне). На компьютере удобно включить.</p>
           <div className="btn-row">

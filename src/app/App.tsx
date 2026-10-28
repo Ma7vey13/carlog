@@ -5,6 +5,7 @@ import { InboxScreen } from '../features/inbox/InboxScreen';
 import { RegulationScreen } from '../features/regulation/RegulationScreen';
 import { StateScreen } from '../features/state/StateScreen';
 import { useOpenDraftCount } from '../db/hooks';
+import { AutoSync } from '../features/sync/AutoSync';
 import { RemoteBanner } from '../features/sync/RemoteBanner';
 import { BackIcon, CloudOffIcon, TAB_ICONS } from '../ui/icons';
 import { PageHeaderContext, type PageHeader } from './pageHeader';
@@ -85,6 +86,7 @@ export function App() {
             )}
           </header>
           <RemoteBanner />
+          <AutoSync />
           <main className="content" id="main">
             {Screen ? (
               <Screen route={route} />

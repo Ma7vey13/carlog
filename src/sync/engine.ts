@@ -200,7 +200,9 @@ export async function push(ctx: SyncContext): Promise<PushResult> {
 
     // 3. New snapshot, everything in one commit.
     ctx.onProgress?.('Шифрую и отправляю данные…');
-    const snapshot = await buildSnapshot(ctx.db, ctx.deviceId, cfg.deviceName, nowOf(ctx));
+    // Taken before the snapshot is read: an edit saved while pushing stays "unsent" and goes next time.
+    const builtAt = nowOf(ctx);
+    const snapshot = await buildSnapshot(ctx.db, ctx.deviceId, cfg.deviceName, builtAt);
     for (const s of (snapshot.tables.scans ?? []) as unknown as Array<{ sha256: string; uploaded: boolean }>) {
       if (uploaded[s.sha256] || remote.files.has(scanPath(s.sha256))) s.uploaded = true;
     }
@@ -225,9 +227,8 @@ export async function push(ctx: SyncContext): Promise<PushResult> {
     await ctx.db.transaction('rw', ctx.db.scans, async () => {
       for (const s of scans) if (!s.uploaded && (uploaded[s.sha256] || remote.files.has(scanPath(s.sha256)))) await ctx.db.scans.update(s.id, { uploaded: true });
     });
-    const at = nowOf(ctx);
     await saveSyncState(ctx.db, {
-      lastPush: { at, commitSha, snapshotSha },
+      lastPush: { at: builtAt, commitSha, snapshotSha },
       knownHead: commitSha,
       scanIndex: { ...scanIndexOf(remote.files), ...uploaded },
     });

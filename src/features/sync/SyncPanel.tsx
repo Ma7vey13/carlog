@@ -78,6 +78,10 @@ export function SyncPanel({ compact = false }: { compact?: boolean }) {
           <dt>Неотправленные изменения</dt>
           <dd data-testid="unsent">{unsent ?? '…'}</dd>
         </div>
+        <div>
+          <dt>Автоматически</dt>
+          <dd data-testid="auto-sync">{!s.autoSync ? 'выключено' : session.key ? 'включено' : 'ждёт пароль'}</dd>
+        </div>
       </dl>
 
       <div className="btn-row">
@@ -127,7 +131,7 @@ export function SyncPanel({ compact = false }: { compact?: boolean }) {
       )}
       {!session.key && !err && (
         <p className="hint">
-          Пароль данных не введён: он понадобится при первой синхронизации.{' '}
+          Пароль данных не введён: {s.autoSync ? 'без него изменения не отправятся сами' : 'он понадобится при первой синхронизации'}.{' '}
           <button type="button" className="link-btn" onClick={() => setAskPassword('unlock')}>
             Ввести сейчас
           </button>
