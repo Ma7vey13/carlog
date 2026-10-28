@@ -6,21 +6,25 @@ import { formatDate, formatKm } from '../../core/format';
 import { documentTitle, LINE_KIND_LABELS, positionLabel, totalsMismatchText, VISIT_KIND_LABELS } from '../../core/labels';
 import type { Component, Id, LineItem } from '../../core/model';
 import { formatQty, formatRub } from '../../core/money';
+import { regulationById, visitPurpose, type Purpose } from '../../core/purpose';
 import { getDb } from '../../db/db';
-import { useComponents, useScans, useVisitBundle } from '../../db/hooks';
+import { useComponents, useRegulationItems, useScans, useVisitBundle } from '../../db/hooks';
 import { ScanViewer } from '../review/ScanViewer';
 import { deleteVisit } from '../../db/visits';
 import { ConfirmDialog } from '../../ui/Dialog';
 import { EditIcon, TrashIcon } from '../../ui/icons';
+import { PurposeTag, PurposeTags } from './PurposeTags';
 
 export function VisitCard({ id }: { id: Id }) {
   const bundle = useVisitBundle(id);
   const components = useComponents();
+  const regulation = useRegulationItems();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const title = bundle ? `Визит ${formatDate(bundle.visit.date)}` : 'Визит';
   usePageHeader(title, hrefFor('/history'));
 
   const componentNames = useMemo(() => new Map((components ?? []).map((c: Component) => [c.id, c.name])), [components]);
+  const purpose = useMemo(() => (bundle ? visitPurpose(bundle, regulationById(regulation)) : null), [bundle, regulation]);
 
   if (bundle === undefined) return <p className="muted">Загрузка…</p>;
   if (bundle === null) {
@@ -33,6 +37,7 @@ export function VisitCard({ id }: { id: Id }) {
 
   const { visit } = bundle;
   const shop = visit.shop;
+  const both = !!purpose?.maintenance && !!purpose.repair;
 
   const onDelete = async () => {
     setConfirmDelete(false);
@@ -48,6 +53,20 @@ export function VisitCard({ id }: { id: Id }) {
             <dt>Дата</dt>
             <dd>{formatDate(visit.date)}</dd>
           </div>
+          {purpose && (purpose.maintenance || purpose.repair) && (
+            <div>
+              <dt>Что делали</dt>
+              <dd data-testid="visit-purpose">
+                <PurposeTags purpose={purpose} />
+                {both && (
+                  <span className="visit-purpose__sums">
+                    <span>ТО — {formatRub(purpose.maintenanceSum)}</span>
+                    <span>ремонт — {formatRub(purpose.repairSum)}</span>
+                  </span>
+                )}
+              </dd>
+            </div>
+          )}
           <div>
             <dt>Пробег</dt>
             <dd>{visit.odometerKm === null ? 'не указан' : formatKm(visit.odometerKm)}</dd>
@@ -92,8 +111,8 @@ export function VisitCard({ id }: { id: Id }) {
             <h2 className="card__title">{documentTitle(document)}</h2>
             {document.purchaseOnly && <p className="pill">Покупка без установки</p>}
             {document.scanIds.length > 0 && <DocumentScans scanIds={document.scanIds} />}
-            {works.length > 0 && <LineGroup title="Работы" lines={works} componentNames={componentNames} />}
-            {parts.length > 0 && <LineGroup title="Запчасти и материалы" lines={parts} componentNames={componentNames} />}
+            {works.length > 0 && <LineGroup title="Работы" lines={works} componentNames={componentNames} purposes={both ? purpose.byLine : null} />}
+            {parts.length > 0 && <LineGroup title="Запчасти и материалы" lines={parts} componentNames={componentNames} purposes={both ? purpose.byLine : null} />}
             <dl className="facts facts--totals">
               <div>
                 <dt>Работы</dt>
@@ -203,7 +222,8 @@ function differsBeyondCase(name: string, raw: string): boolean {
   return fold(name) !== fold(raw);
 }
 
-function LineGroup({ title, lines, componentNames }: { title: string; lines: LineItem[]; componentNames: Map<Id, string> }) {
+/** `purposes` is given only for a visit with both ТО and ремонт: then each line says which it is. */
+function LineGroup({ title, lines, componentNames, purposes }: { title: string; lines: LineItem[]; componentNames: Map<Id, string>; purposes: Map<Id, Purpose | null> | null }) {
   return (
     <div className="line-group">
       <h3 className="line-group__title">{title}</h3>
@@ -216,10 +236,12 @@ function LineGroup({ title, lines, componentNames }: { title: string; lines: Lin
             l.brand,
             l.article ? `арт. ${l.article}` : null,
           ].filter(Boolean);
+          const p = purposes?.get(l.id) ?? null;
           return (
-            <li key={l.id} className="line-item">
+            <li key={l.id} className={p ? `line-item line-item--${p}` : 'line-item'} data-purpose={p ?? undefined}>
               <div className="line-item__name">
                 {l.name || l.rawName}
+                {p && <PurposeTag purpose={p} />}
                 {l.customerPart && <span className="tag">запчасть клиента</span>}
               </div>
               {(l.sum !== null || l.price !== null) && (

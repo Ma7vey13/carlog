@@ -2,17 +2,19 @@ import { useMemo, useState } from 'react';
 import { hrefFor, type Route } from '../../app/routes';
 import { allLines, visitTotal } from '../../core/bundle';
 import { formatDate, formatKm } from '../../core/format';
-import { documentTitle, VISIT_KIND_LABELS } from '../../core/labels';
+import { documentTitle, PURPOSE_LABELS, VISIT_KIND_LABELS } from '../../core/labels';
 import type { MileageEntry } from '../../core/model';
 import { formatRub } from '../../core/money';
+import { PURPOSES, regulationById, visitPurpose, type Purpose, type VisitPurpose } from '../../core/purpose';
 import { componentSubtree, filterVisits, type VisitMatch } from '../../core/search';
 import { getDb } from '../../db/db';
-import { componentTree, useComponents, useMileage, useVisitBundles } from '../../db/hooks';
+import { componentTree, useComponents, useMileage, useRegulationItems, useVisitBundles } from '../../db/hooks';
 import { deleteMileage } from '../../db/visits';
 import { ConfirmDialog } from '../../ui/Dialog';
 import { EmptyState } from '../../ui/EmptyState';
 import { CloseIcon, GaugeIcon, HistoryIcon, PlusIcon, SearchIcon } from '../../ui/icons';
 import { MileageDialog } from './MileageDialog';
+import { PurposeTags, purposeClass } from './PurposeTags';
 import { VisitCard } from './VisitCard';
 import { VisitEditor } from './VisitEditor';
 
@@ -25,25 +27,30 @@ export function HistoryScreen({ route }: { route: Route }) {
   return <HistoryList />;
 }
 
-type FeedItem = { type: 'visit'; date: string; match: VisitMatch } | { type: 'mileage'; date: string; entry: MileageEntry };
+type FeedItem = { type: 'visit'; date: string; match: VisitMatch; purpose: VisitPurpose } | { type: 'mileage'; date: string; entry: MileageEntry };
 
 function HistoryList() {
   const bundles = useVisitBundles();
   const mileage = useMileage();
   const components = useComponents();
+  const regulation = useRegulationItems();
   const [query, setQuery] = useState('');
+  const [purposeFilter, setPurposeFilter] = useState<Purpose | ''>('');
   const [componentId, setComponentId] = useState('');
   const [mileageOpen, setMileageOpen] = useState(false);
   const [deleting, setDeleting] = useState<MileageEntry | null>(null);
 
   const tree = useMemo(() => componentTree(components ?? []), [components]);
-  const filtering = query.trim() !== '' || componentId !== '';
+  const filtering = query.trim() !== '' || componentId !== '' || purposeFilter !== '';
 
   const feed = useMemo<FeedItem[]>(() => {
     if (!bundles) return [];
     const componentIds = componentId ? componentSubtree(componentId, components ?? []) : null;
-    const matches = filterVisits(bundles, { query, componentIds });
-    const items: FeedItem[] = matches.map((match) => ({ type: 'visit', date: match.bundle.visit.date, match }));
+    const byId = regulationById(regulation);
+    const items: FeedItem[] = filterVisits(bundles, { query, componentIds })
+      .map((match) => ({ type: 'visit' as const, date: match.bundle.visit.date, match, purpose: visitPurpose(match.bundle, byId) }))
+      // a visit with both ТО and ремонт is found by either
+      .filter((item) => !purposeFilter || item.purpose[purposeFilter]);
     // Manual mileage marks appear in the feed only when nothing is filtered.
     if (!filtering) {
       for (const entry of mileage ?? []) {
@@ -51,7 +58,7 @@ function HistoryList() {
       }
     }
     return items.sort((a, b) => b.date.localeCompare(a.date));
-  }, [bundles, mileage, components, query, componentId, filtering]);
+  }, [bundles, mileage, components, regulation, query, componentId, purposeFilter, filtering]);
 
   if (bundles === undefined) return <p className="muted">Загрузка…</p>;
 
@@ -130,6 +137,13 @@ function HistoryList() {
             </option>
           ))}
         </select>
+        <div className="segmented purpose-filter" role="radiogroup" aria-label="ТО или ремонт">
+          {(['', ...PURPOSES] as const).map((p) => (
+            <button key={p || 'all'} type="button" role="radio" aria-checked={purposeFilter === p} className="segmented__item" onClick={() => setPurposeFilter(p)}>
+              {p ? PURPOSE_LABELS[p] : 'Все визиты'}
+            </button>
+          ))}
+        </div>
       </div>
 
       {filtering && (
@@ -142,7 +156,7 @@ function HistoryList() {
         {feed.map((item) =>
           item.type === 'visit' ? (
             <li key={item.match.bundle.visit.id}>
-              <VisitRow match={item.match} />
+              <VisitRow match={item.match} purpose={item.purpose} />
             </li>
           ) : (
             <li key={item.entry.id} className="feed__mileage">
@@ -163,7 +177,7 @@ function HistoryList() {
   );
 }
 
-function VisitRow({ match }: { match: VisitMatch }) {
+function VisitRow({ match, purpose }: { match: VisitMatch; purpose: VisitPurpose }) {
   const { bundle, matchedLines } = match;
   const { visit } = bundle;
   const lines = allLines(bundle);
@@ -172,13 +186,19 @@ function VisitRow({ match }: { match: VisitMatch }) {
   const who = visit.kind === 'self' ? VISIT_KIND_LABELS.self : visit.shop.name || 'Сервис';
 
   return (
-    <a className="visit-row" href={hrefFor(`/history/${visit.id}`)} data-testid="visit-row">
+    <a className={`visit-row ${purposeClass('visit-row', purpose)}`} href={hrefFor(`/history/${visit.id}`)} data-testid="visit-row">
       <div className="visit-row__top">
         <span className="visit-row__date">{formatDate(visit.date)}</span>
         {visit.odometerKm !== null && <span className="visit-row__km">{formatKm(visit.odometerKm)}</span>}
         <span className="visit-row__sum">{formatRub(visitTotal(bundle))}</span>
       </div>
       <div className="visit-row__who">
+        <PurposeTags purpose={purpose} />
+        {purpose.purchaseOnly && (
+          <span className="kind-tags">
+            <span className="kind-tag kind-tag--purchase">Покупка</span>
+          </span>
+        )}
         {who}
         {firstDoc ? <span className="muted"> · {documentTitle(firstDoc)}</span> : null}
       </div>

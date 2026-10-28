@@ -643,3 +643,103 @@ ul.notice {
 .notice .plain-list {
   font-variant-numeric: tabular-nums;
 }
+
+/* ТО and ремонт (D-089): a stripe on the visit row and on lines, plus a text tag. */
+.kind-tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.kind-tag--maintenance {
+  background: var(--kind-to-soft);
+  color: var(--kind-to);
+}
+
+.kind-tag--repair {
+  background: var(--kind-repair-soft);
+  color: var(--kind-repair);
+}
+
+.kind-tag--purchase {
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.kind-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-right: 6px;
+  vertical-align: 1px;
+}
+
+.visit-row {
+  position: relative;
+  overflow: hidden;
+}
+
+.visit-row--maintenance,
+.visit-row--repair,
+.visit-row--mixed {
+  padding-left: 18px;
+}
+
+.visit-row--maintenance::before,
+.visit-row--repair::before,
+.visit-row--mixed::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+}
+
+.visit-row--maintenance::before {
+  background: var(--kind-to);
+}
+
+.visit-row--repair::before {
+  background: var(--kind-repair);
+}
+
+.visit-row--mixed::before {
+  background: linear-gradient(to bottom, var(--kind-to) 50%, var(--kind-repair) 50%);
+}
+
+.line-item--maintenance,
+.line-item--repair {
+  padding-left: 10px;
+  border-left: 3px solid;
+}
+
+.line-item--maintenance {
+  border-left-color: var(--kind-to);
+}
+
+.line-item--repair {
+  border-left-color: var(--kind-repair);
+}
+
+.line-item .kind-tag {
+  margin-left: 6px;
+  vertical-align: 1px;
+}
+
+.purpose-filter {
+  grid-column: 1 / -1;
+}
+
+.visit-purpose__sums {
+  display: grid;
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.visit-purpose__sums > span {
+  white-space: nowrap;
+}

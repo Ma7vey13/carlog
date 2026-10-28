@@ -2,6 +2,7 @@
 
 import type { TotalsMismatch } from './bundle';
 import type { Axle, CarDocument, DocumentType, DraftStatus, LineKind, Performer, RegulationAction, RegulationSource, Side, VisitKind } from './model';
+import type { Purpose } from './purpose';
 import type { ScheduleStatus } from './schedule';
 import { formatDate } from './format';
 import { formatRub } from './money';
@@ -31,6 +32,9 @@ export const DRAFT_STATUS_LABELS: Record<DraftStatus, string> = {
   accepted: 'Принят',
   rejected: 'Отклонён',
 };
+
+/** ТО or ремонт (D-089), see core/purpose.ts. */
+export const PURPOSE_LABELS: Record<Purpose, string> = { maintenance: 'ТО', repair: 'Ремонт' };
 
 export const VISIT_KIND_LABELS: Record<VisitKind, string> = {
   service: 'Сервис',

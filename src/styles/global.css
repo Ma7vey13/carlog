@@ -19,6 +19,12 @@
   --status-green: #2b7a3d;
   --status-gray: #78818d;
 
+  /* ТО and ремонт in the history (D-089). */
+  --kind-to: #1d5fb8;
+  --kind-to-soft: #e4edf9;
+  --kind-repair: #a2470f;
+  --kind-repair-soft: #fbeee3;
+
   --radius: 12px;
   --radius-sm: 8px;
   --shadow: 0 1px 2px rgb(16 24 40 / 6%), 0 1px 3px rgb(16 24 40 / 8%);
@@ -44,6 +50,10 @@
   --status-yellow: #e5ac3d;
   --status-green: #5ec276;
   --status-gray: #8d96a1;
+  --kind-to: #6aa5f8;
+  --kind-to-soft: #1b2a42;
+  --kind-repair: #f0a060;
+  --kind-repair-soft: #3b2616;
   --shadow: none;
 }
 
@@ -65,6 +75,10 @@
     --status-yellow: #e5ac3d;
     --status-green: #5ec276;
     --status-gray: #8d96a1;
+    --kind-to: #6aa5f8;
+    --kind-to-soft: #1b2a42;
+    --kind-repair: #f0a060;
+    --kind-repair-soft: #3b2616;
     --shadow: none;
   }
 }
