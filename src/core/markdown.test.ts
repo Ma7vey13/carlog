@@ -41,7 +41,7 @@ describe('parseMarkdown', () => {
   });
 
   it('parses every owner guide without losing text', () => {
-    for (const file of ['01-github-repos.md', '02-github-pages.md', '03-install.md', '04-sync.md']) {
+    for (const file of ['01-github-repos.md', '02-github-pages.md', '03-install.md', '04-sync.md', '05-claude-code.md']) {
       const text = readFileSync(new URL(`../../docs/${file}`, import.meta.url), 'utf8');
       const blocks = parseMarkdown(text);
       expect(blocks[0]?.type, file).toBe('heading');

@@ -11,6 +11,7 @@ import { useDraft, useScans } from '../../db/hooks';
 import { copyText, shareScans } from '../../scan/share';
 import { ConfirmDialog } from '../../ui/Dialog';
 import { TextAreaField } from '../../ui/Field';
+import { helpHref } from '../help/guides';
 import { ReviewScreen } from '../review/ReviewScreen';
 import { ScanViewer } from '../review/ScanViewer';
 import { AddDocument, ImportJson, IssueList } from './AddDocument';
@@ -123,7 +124,10 @@ function RecognizeView({ draft }: { draft: Draft }) {
             Отклонить
           </button>
         </div>
-        <p className="hint">Распознавание через Claude Code появится на этапе 5.</p>
+        <p className="hint">
+          Есть подписка на Claude? Отправьте сканы («Ещё → Отправить») и распознайте их пачкой на компьютере командой /parse-scans —{' '}
+          <a href={helpHref('claude')}>инструкция</a>.
+        </p>
       </section>
 
       <ConfirmDialog
