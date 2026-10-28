@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
 
 test('help: guides open from "Ещё", section links scroll, links between guides stay in the app', async ({ page }) => {
   await page.goto('./#/more');
-  await page.getByRole('link', { name: 'Инструкции: синхронизация, установка, GitHub' }).click();
+  await page.getByRole('link', { name: 'Руководство: установка, синхронизация, распознавание, копия' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Справка');
   await page.getByRole('link', { name: /Синхронизация/ }).click();
 

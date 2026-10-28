@@ -1,9 +1,13 @@
 // Owner guides from docs/, bundled into the app (and so available offline): "Ещё → Справка".
+import guideMd from '../../../docs/00-guide.md?raw';
 import pagesMd from '../../../docs/02-github-pages.md?raw';
 import reposMd from '../../../docs/01-github-repos.md?raw';
 import installMd from '../../../docs/03-install.md?raw';
 import syncMd from '../../../docs/04-sync.md?raw';
 import claudeMd from '../../../docs/05-claude-code.md?raw';
+import recognitionMd from '../../../docs/06-recognition.md?raw';
+import backupMd from '../../../docs/07-backup.md?raw';
+import everydayMd from '../../../docs/08-everyday.md?raw';
 import { hrefFor } from '../../app/routes';
 
 export interface Guide {
@@ -16,8 +20,12 @@ export interface Guide {
 
 /** In the order the owner needs them day to day. */
 export const GUIDES: readonly Guide[] = [
+  { slug: 'guide', file: '00-guide.md', title: 'Руководство владельца', summary: 'С чего начать, что делать каждый день, где что лежит', source: guideMd },
+  { slug: 'everyday', file: '08-everyday.md', title: 'Главный экран и регламент', summary: 'Сроки ТО, «Отметить, когда делалось», самопроверка, ОСАГО', source: everydayMd },
+  { slug: 'recognition', file: '06-recognition.md', title: 'Три способа внести документ', summary: 'Claude Code, чат-ИИ, вручную; экран проверки', source: recognitionMd },
   { slug: 'sync', file: '04-sync.md', title: 'Синхронизация', summary: 'Токен, настройка телефона и компьютера, истёкший токен, забытый пароль', source: syncMd },
   { slug: 'claude', file: '05-claude-code.md', title: 'Распознавание через Claude Code', summary: 'Сканы во «Входящих», /parse-scans на компьютере, проверка в приложении', source: claudeMd },
+  { slug: 'backup', file: '07-backup.md', title: 'Резервная копия и пароль', summary: 'Сохранить и восстановить копию, сменить пароль, освободить место', source: backupMd },
   { slug: 'install', file: '03-install.md', title: 'Установка и обновления', summary: 'Приложение на главном экране, работа без интернета', source: installMd },
   { slug: 'repos', file: '01-github-repos.md', title: 'Репозитории GitHub', summary: 'carlog и carlog-data, скрытая почта', source: reposMd },
   { slug: 'pages', file: '02-github-pages.md', title: 'Публикация сайта', summary: 'GitHub Pages и запуск публикации', source: pagesMd },
