@@ -331,3 +331,158 @@
 .import-role .input {
   width: 100%;
 }
+
+/* Regulation: groups by source and «Карта ТО» */
+.segmented__link {
+  display: grid;
+  place-items: center;
+  text-align: center;
+  text-decoration: none;
+}
+
+.segmented__link[aria-selected='true'] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.reg-group__title {
+  font-size: 17px;
+  font-weight: 650;
+}
+
+.card.reg-group {
+  padding: 8px 16px 4px;
+  gap: 0;
+}
+
+.reg-group__sub {
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+
+.reg-group .sched-list + .reg-group__sub {
+  margin-top: 12px;
+}
+
+.tag--muted {
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.map-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  -webkit-overflow-scrolling: touch;
+}
+
+.map-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.map-table th,
+.map-table td {
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+  min-width: 34px;
+}
+
+.map-table thead th {
+  font-weight: 650;
+  background: var(--surface-2);
+}
+
+.map-table__sub {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.map-table .map-table__name {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 136px;
+  max-width: 136px;
+  padding-left: 10px;
+  text-align: left;
+  font-weight: 500;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+
+.map-table thead .map-table__name {
+  background: var(--surface-2);
+}
+
+.map-table__name a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.map-table__group th {
+  position: sticky;
+  left: 0;
+  padding: 10px 10px 4px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  background: var(--surface);
+}
+
+.map-cell--on {
+  font-weight: 700;
+}
+
+.map-row--replace .map-cell--on {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.map-row--inspect .map-cell--on {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.card.map-step {
+  padding: 4px 16px;
+  gap: 4px;
+}
+
+.map-step > summary {
+  min-height: 44px;
+  flex-wrap: wrap;
+  column-gap: 6px;
+  color: var(--text);
+}
+
+.map-step__km {
+  font-weight: 650;
+}
+
+.map-step__sub {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text-muted);
+}
+
+.map-step .plain-list {
+  margin-bottom: 8px;
+}

@@ -4,8 +4,9 @@ import { usePageHeader } from '../../app/pageHeader';
 import { hrefFor, type Route } from '../../app/routes';
 import type { VisitBundle } from '../../core/bundle';
 import { matchingLines } from '../../core/keywords';
-import { PERFORMER_LABELS, REGULATION_ACTION_LABELS, SCHEDULE_STATUS_LABELS } from '../../core/labels';
-import type { Id, Performer, RegulationAction, RegulationItem } from '../../core/model';
+import { PERFORMER_LABELS, REGULATION_ACTION_LABELS, REGULATION_SOURCE_GROUPS, SCHEDULE_STATUS_LABELS } from '../../core/labels';
+import { mapGroups, type MapRow } from '../../core/serviceMap';
+import type { Id, Performer, RegulationAction, RegulationItem, RegulationSource } from '../../core/model';
 import { itemIntervalText } from '../../core/scheduleText';
 import { formatDate, formatLocalDateTime, plural } from '../../core/format';
 import { parseKm } from '../../core/visitForm';
@@ -20,18 +21,20 @@ import { PlusIcon, RegulationIcon } from '../../ui/icons';
 import { ItemCard } from '../state/ItemCard';
 import { useSchedule } from '../state/useSchedule';
 import { RegulationImportScreen } from './RegulationImportScreen';
+import { ServiceMapView } from './ServiceMapView';
 
 /** Регламент tab: list, `/regulation/new`, `/regulation/import`, `/regulation/<id>` (card), `/regulation/<id>/edit`. */
 export function RegulationScreen({ route }: { route: Route }) {
   const [first, second] = route.rest;
   if (first === 'new') return <RegulationEditor id={null} />;
   if (first === 'import') return <RegulationImportScreen />;
+  if (first === 'map') return <RegulationList view="map" />;
   if (first && second === 'edit') return <RegulationEditor id={first} />;
   if (first) return <ItemCard id={first} backHref={hrefFor('/regulation')} />;
-  return <RegulationList />;
+  return <RegulationList view="list" />;
 }
 
-function RegulationList() {
+function RegulationList({ view }: { view: 'list' | 'map' }) {
   const data = useSchedule();
   if (!data) return <p className="muted">Загрузка…</p>;
 
@@ -59,36 +62,90 @@ function RegulationList() {
   const byId = new Map(data.items.map((s) => [s.item.id, s]));
   // "вручную" matters only next to items from a table.
   const hasTable = data.regulation.some((i) => i.origin === 'table');
+  const groups = mapGroups(data.regulation);
+  const showTitles = groups.length > 1 || groups[0]?.key !== 'none';
+  // The list is for finding an item: by name. «Карта ТО» orders by frequency.
+  const byName = (rows: readonly MapRow[]) => rows.map((r) => r.item).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+
+  const list =(items: RegulationItem[], label: string) => (
+    <ul className="sched-list" aria-label={label}>
+      {items.map((item) => {
+        const s = byId.get(item.id);
+        const status = s?.status ?? 'gray';
+        return (
+          <li key={item.id} className={`sched-row sched-row--${status}`} data-status={status}>
+            <a className="sched-row__link" href={hrefFor(`/regulation/${item.id}`)}>
+              <span className="sched-dot" aria-hidden="true" />
+              <span className="sched-row__body">
+                <span className="sched-row__name">
+                  {item.name}
+                  {hasTable && item.origin !== 'table' && <span className="tag">вручную</span>}
+                </span>
+                <span className="sched-row__due">
+                  <span className="visually-hidden">{SCHEDULE_STATUS_LABELS[status]}: </span>
+                  {itemIntervalText(item)}
+                </span>
+              </span>
+              <span className="muted" aria-hidden="true">
+                ›
+              </span>
+            </a>
+          </li>
+        );
+      })}
+    </ul>
+  );
+
   return (
     <div className="stack">
       {add}
       <LastImportCard />
-      <ul className="card sched-list" data-testid="regulation-list">
-        {data.regulation.map((item) => {
-          const s = byId.get(item.id);
-          const status = s?.status ?? 'gray';
-          return (
-            <li key={item.id} className={`sched-row sched-row--${status}`} data-status={status}>
-              <a className="sched-row__link" href={hrefFor(`/regulation/${item.id}`)}>
-                <span className="sched-dot" aria-hidden="true" />
-                <span className="sched-row__body">
-                  <span className="sched-row__name">
-                    {item.name}
-                    {hasTable && item.origin !== 'table' && <span className="tag">вручную</span>}
-                  </span>
-                  <span className="sched-row__due">
-                    <span className="visually-hidden">{SCHEDULE_STATUS_LABELS[status]}: </span>
-                    {itemIntervalText(item)}
-                  </span>
-                </span>
-                <span className="muted" aria-hidden="true">
-                  ›
-                </span>
-              </a>
-            </li>
-          );
-        })}
-      </ul>
+      <div className="segmented segmented--2" role="tablist" aria-label="Вид регламента">
+        <a className="segmented__item segmented__link" role="tab" aria-selected={view === 'list'} href={hrefFor('/regulation')}>
+          Список
+        </a>
+        <a className="segmented__item segmented__link" role="tab" aria-selected={view === 'map'} href={hrefFor('/regulation/map')}>
+          Карта ТО по пробегу
+        </a>
+      </div>
+      {view === 'map' ? (
+        <ServiceMapView items={data.regulation} />
+      ) : (
+        <div className="stack" data-testid="regulation-list">
+          {groups.map((g) => {
+            const title = REGULATION_SOURCE_GROUPS[g.key];
+            return (
+              <section key={g.key} className="stack-sm" aria-label={title} data-testid={`reg-group-${g.key}`}>
+                {showTitles && (
+                  <h2 className="reg-group__title">
+                    {title} <span className="muted">· {g.replace.length + g.inspect.length}</span>
+                  </h2>
+                )}
+                <div className="card reg-group">
+                  {g.replace.length > 0 && (
+                    <>
+                      <h3 className="reg-group__sub">Замена · {g.replace.length}</h3>
+                      {list(
+                        byName(g.replace),
+                        `${title}: замена`,
+                      )}
+                    </>
+                  )}
+                  {g.inspect.length > 0 && (
+                    <>
+                      <h3 className="reg-group__sub">Проверка · {g.inspect.length}</h3>
+                      {list(
+                        byName(g.inspect),
+                        `${title}: проверка`,
+                      )}
+                    </>
+                  )}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -141,6 +198,7 @@ interface EditorState {
   severeMonths: string;
   keywords: string;
   note: string;
+  source: RegulationSource | '';
 }
 
 const toText = (n: number | null) => (n === null ? '' : String(n));
@@ -157,6 +215,7 @@ function fromItem(item: RegulationItem | undefined): EditorState {
     severeMonths: toText(item?.severeIntervalMonths ?? null),
     keywords: item?.keywords.join('\n') ?? '',
     note: item?.note ?? '',
+    source: item?.source ?? '',
   };
 }
 
@@ -200,6 +259,7 @@ function parse(f: EditorState): Parsed {
       severeIntervalMonths,
       keywords: parseKeywordVariants(f.keywords, f.name),
       note: f.note.trim(),
+      source: f.source || undefined,
     },
   };
 }
@@ -283,6 +343,16 @@ function EditorForm({ existing, bundles }: { existing: RegulationItem | undefine
             ))}
           </SelectField>
         </div>
+        <SelectField
+          label="Откуда пункт"
+          value={f.source}
+          hint="Пункты сервиса стоят в регламенте первыми; на «Карте ТО» видно, на каком пробеге что делать."
+          onChange={(e) => set({ source: e.target.value as RegulationSource | '' })}
+        >
+          <option value="">— не указано —</option>
+          <option value="service">График ТО сервиса</option>
+          <option value="instruction">Инструкция к автомобилю</option>
+        </SelectField>
       </section>
 
       <section className="card" aria-label="Интервал">

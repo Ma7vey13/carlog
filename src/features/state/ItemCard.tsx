@@ -75,6 +75,12 @@ export function ItemCard({ id, backHref }: { id: Id; backHref: string }) {
               {REGULATION_ACTION_LABELS[item.action]}, {PERFORMER_LABELS[item.performer].toLowerCase()}
             </dd>
           </div>
+          {item.source && (
+            <div>
+              <dt>Откуда</dt>
+              <dd data-testid="item-source">{item.source === 'service' ? 'график ТО сервиса' : 'инструкция к автомобилю'}</dd>
+            </div>
+          )}
           {component && (
             <div>
               <dt>Узел</dt>

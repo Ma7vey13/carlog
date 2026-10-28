@@ -22,7 +22,8 @@ import { getDb } from '../../db/db';
 import { useComponents } from '../../db/hooks';
 import { applyRegulationImport, plannedLinks } from '../../db/regulationImport';
 import { copyText } from '../../scan/share';
-import { TextAreaField } from '../../ui/Field';
+import type { RegulationSource } from '../../core/model';
+import { SelectField, TextAreaField } from '../../ui/Field';
 import { useSchedule } from '../state/useSchedule';
 
 const ROLES = Object.keys(COLUMN_ROLE_LABELS) as ColumnRole[];
@@ -90,8 +91,9 @@ function SourceCard({ onGrid, onError }: { onGrid: (g: Grid, name: string) => vo
     <section className="card" aria-label="Откуда таблица">
       <h2 className="card__title">Таблица регламента</h2>
       <p className="hint">
-        Можно загружать в любой момент: новая таблица заменит пункты предыдущей, история и ваши отметки сохранятся. Перед применением
-        покажу, что изменится, а последнюю загрузку можно отменить.
+        Можно загружать в любой момент: график ТО сервиса и регламент из инструкции — отдельно или одной таблицей с колонкой «Источник».
+        Новая таблица заменит пункты прежней того же источника, история и ваши отметки сохранятся. Перед применением покажу, что
+        изменится, а последнюю загрузку можно отменить.
       </p>
       <button type="button" className="btn btn--primary" style={{ justifySelf: 'start' }} onClick={() => ref.current?.click()}>
         Выбрать файл: Excel или CSV
@@ -144,12 +146,14 @@ function Preview({ grid, fileName, layout, onLayout }: { grid: Grid; fileName: s
   // Removed items too: a table that brings one back revives it with its history.
   const allItems = useLiveQuery(() => getDb().regulationItems.toArray(), []);
   const [applying, setApplying] = useState(false);
+  const [tableSource, setTableSource] = useState<RegulationSource | ''>('');
 
   const parsed: ParseResult = useMemo(() => parseTable(grid, layout), [grid, layout]);
   const plan: ImportPlan | null = useMemo(
-    () => (allItems && components ? planImport(parsed.items, allItems, components) : null),
-    [parsed, allItems, components],
+    () => (allItems && components ? planImport(parsed.items, allItems, components, tableSource || null) : null),
+    [parsed, allItems, components, tableSource],
   );
+  const withSource = parsed.items.filter((p) => p.source).length;
   const links = useMemo(() => (plan && data ? plannedLinks(data.bundles, plan) : []), [plan, data]);
   const linksOf = (id: string) => links.filter(([, item]) => item === id).length;
 
@@ -220,6 +224,33 @@ function Preview({ grid, fileName, layout, onLayout }: { grid: Grid; fileName: s
         )}
       </section>
 
+      <section className="card" aria-label="Чья это таблица" data-testid="import-source">
+        <h2 className="card__title">Чья это таблица</h2>
+        {withSource === parsed.items.length && parsed.items.length > 0 ? (
+          <p>
+            Источник указан в таблице у каждой строки: сервис — {parsed.items.filter((p) => p.source === 'service').length}, инструкция —{' '}
+            {parsed.items.filter((p) => p.source === 'instruction').length}.
+          </p>
+        ) : (
+          <SelectField
+            label={withSource ? `Для строк без источника (${parsed.items.length - withSource})` : 'Таблица'}
+            value={tableSource}
+            onChange={(e) => setTableSource(e.target.value as RegulationSource | '')}
+          >
+            <option value="">— не указывать —</option>
+            <option value="service">График ТО сервиса</option>
+            <option value="instruction">Инструкция к автомобилю</option>
+          </SelectField>
+        )}
+        <p className="hint" data-testid="import-scope">
+          {plan?.scope
+            ? `Заменятся только пункты: ${plan.scope.map((s) => (s === 'service' ? 'сервиса' : 'инструкции')).join(' и ')}. ${
+                plan.scope.length === 1 ? `Пункты ${plan.scope[0] === 'service' ? 'инструкции' : 'сервиса'} останутся. ` : ''
+              }Если работа есть в обоих графиках, останется один пункт с более частым интервалом.`
+            : 'Без источника таблица заменит весь регламент из прежних таблиц. Укажите, чья она, — тогда заменятся только пункты этого источника, а сервис и инструкция будут видны в регламенте отдельно.'}
+        </p>
+      </section>
+
       <section className="card" aria-label="Что изменится" data-testid="import-plan">
         <h2 className="card__title">Что изменится</h2>
         {total === 0 ? (
@@ -276,6 +307,12 @@ function Preview({ grid, fileName, layout, onLayout }: { grid: Grid; fileName: s
         )}
         {plan.unchanged.length > 0 && <p className="hint">Без изменений: {plan.unchanged.length}.</p>}
         {plan.keepManual.length > 0 && <p className="hint">Пункты, добавленные вручную, останутся как есть: {plan.keepManual.map((i) => i.name).join(', ')}.</p>}
+        {plan.keepOther.length > 0 && (
+          <p className="hint" data-testid="plan-keep-other">
+            Останутся пункты других источников: {plan.keepOther.length} ({plan.keepOther.slice(0, 5).map((i) => i.name).join(', ')}
+            {plan.keepOther.length > 5 ? '…' : ''}).
+          </p>
+        )}
         {plan.duplicates.length > 0 && <p className="hint">Повторяются в таблице (взята первая строка): {plan.duplicates.join(', ')}.</p>}
         <div className="btn-row">
           <button type="button" className="btn btn--primary" disabled={applying || total === 0} onClick={() => void apply()}>
