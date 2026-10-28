@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { hrefFor, type Route } from '../../app/routes';
 import { ComponentsScreen } from './ComponentsScreen';
 import { PartRulesScreen } from './PartRulesScreen';
+import { ScheduleSettingsScreen } from './ScheduleSettingsScreen';
 import { SyncPanel } from '../sync/SyncPanel';
 import { SyncScreen } from '../sync/SyncScreen';
 import { HelpScreen } from '../help/HelpScreen';
@@ -14,6 +15,7 @@ const THEME_ORDER: ThemeChoice[] = ['system', 'light', 'dark'];
 export function MoreScreen({ route }: { route: Route }) {
   if (route.rest[0] === 'components') return <ComponentsScreen />;
   if (route.rest[0] === 'part-rules') return <PartRulesScreen />;
+  if (route.rest[0] === 'schedule') return <ScheduleSettingsScreen />;
   if (route.rest[0] === 'sync') return <SyncScreen route={route} />;
   if (route.rest[0] === 'help') return <HelpScreen route={route} />;
   return (
@@ -29,6 +31,12 @@ export function MoreScreen({ route }: { route: Route }) {
         </a>
         <a className="menu-link" href={hrefFor('/more/part-rules')}>
           <span>Правила «работа → запчасть»</span>
+          <span className="muted" aria-hidden="true">
+            ›
+          </span>
+        </a>
+        <a className="menu-link" href={hrefFor('/more/schedule')}>
+          <span>Расчёт сроков: тяжёлые условия, пороги</span>
           <span className="muted" aria-hidden="true">
             ›
           </span>

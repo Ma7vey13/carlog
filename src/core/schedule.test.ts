@@ -6,7 +6,8 @@ import type { VisitBundle } from './bundle';
 import { suggestRegulationIds, unlinkedMatchingLines } from './keywords';
 import { mileagePoints } from './mileage';
 import type { ManualEvent, RegulationItem } from './model';
-import { actualIntervals, currentMileage, DEFAULT_THRESHOLDS, kmDueDateEstimate, scheduleAll, scheduleItem, type Thresholds } from './schedule';
+import { startComponentId } from './components';
+import { actualIntervals, componentHistory, currentMileage, DEFAULT_THRESHOLDS, kmDueDateEstimate, scheduleAll, scheduleItem, type Thresholds } from './schedule';
 
 /** History of test pages 1–6, lines linked to the fixture regulation by keywords. */
 function history(items: readonly RegulationItem[] = FIXTURE_REGULATION): VisitBundle[] {
@@ -164,5 +165,22 @@ describe('keyword matching', () => {
     expect(suggestRegulationIds('Фильтр салонный', FIXTURE_REGULATION)).toEqual([CABIN_FILTER.id]);
     expect(suggestRegulationIds('Замена масла в раздаточной коробке', FIXTURE_REGULATION)).toEqual([TRANSFER_OIL.id]);
     expect(suggestRegulationIds('', FIXTURE_REGULATION)).toEqual([]);
+  });
+});
+
+describe('component history', () => {
+  it('groups lines of a component by name with the actual intervals', () => {
+    const bundles = history();
+    const points = mileagePoints(bundles.flatMap((b) => (b.mileage ? [b.mileage] : [])));
+    const brakesFront = startComponentId('Тормоза передние');
+    const parts = componentHistory(new Set([brakesFront]), bundles, points);
+    const pads = parts.find((p) => p.name.startsWith('Колодки тормозные перед'))!;
+    expect(pads.executions.map((e) => [e.date, e.km])).toEqual([
+      ['2025-07-22', 298000],
+      ['2025-03-12', 293000],
+    ]);
+    expect(actualIntervals(pads.executions).map((i) => [i.days, i.km])).toEqual([[132, 5000]]);
+    // materials are not parts
+    expect(parts.some((p) => p.name === 'Расходные материалы')).toBe(false);
   });
 });

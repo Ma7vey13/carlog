@@ -37,6 +37,8 @@ export function parseHash(hash: string): Route {
   if (segments.length === 0) return { tab: 'state', path: '/', rest: [] };
 
   const [first, ...rest] = segments;
+  // The home tab lives at `/`; its cards are `/state/item/<id>` and `/state/component/<id>`.
+  if (first === 'state') return { tab: 'state', path, rest };
   const tab = TABS.find((t) => t.path === '/' + first);
   return { tab: tab ? tab.id : null, path, rest };
 }

@@ -1,7 +1,8 @@
 // Russian UI labels for stored enum values.
 
 import type { TotalsMismatch } from './bundle';
-import type { Axle, CarDocument, DocumentType, DraftStatus, LineKind, Side, VisitKind } from './model';
+import type { Axle, CarDocument, DocumentType, DraftStatus, LineKind, Performer, RegulationAction, Side, VisitKind } from './model';
+import type { ScheduleStatus } from './schedule';
 import { formatDate } from './format';
 import { formatRub } from './money';
 
@@ -55,3 +56,13 @@ export function documentTitle(doc: Pick<CarDocument, 'type' | 'number' | 'date' 
 export function positionLabel(pos: { axle: Axle | null; side: Side | null }): string {
   return [pos.axle ? AXLE_LABELS[pos.axle] : null, pos.side ? SIDE_LABELS[pos.side] : null].filter(Boolean).join(', ');
 }
+
+export const SCHEDULE_STATUS_LABELS: Record<ScheduleStatus, string> = {
+  red: 'Пора',
+  yellow: 'Скоро',
+  green: 'В порядке',
+  gray: 'Нет данных',
+};
+
+export const REGULATION_ACTION_LABELS: Record<RegulationAction, string> = { replace: 'Замена', inspect: 'Проверка' };
+export const PERFORMER_LABELS: Record<Performer, string> = { service: 'Сервис', self: 'Сам' };

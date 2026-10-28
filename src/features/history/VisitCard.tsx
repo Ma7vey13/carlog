@@ -165,7 +165,7 @@ export function VisitCard({ id }: { id: Id }) {
 }
 
 /** Scan pages of a document, loaded only when opened. */
-function DocumentScans({ scanIds }: { scanIds: Id[] }) {
+export function DocumentScans({ scanIds }: { scanIds: Id[] }) {
   const [open, setOpen] = useState(false);
   const scans = useScans(open ? scanIds : []);
   return (

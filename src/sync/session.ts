@@ -3,6 +3,7 @@
 
 import { useSyncExternalStore } from 'react';
 import { unlockVault, WrongPasswordError } from '../core/crypto';
+import { plural } from '../core/format';
 import { getDb } from '../db/db';
 import { getDeviceId } from '../db/device';
 import { downloadMissingScans, hasRemoteChanges, pull, push, SyncError, VaultChangedError, type SyncContext } from './engine';
@@ -107,12 +108,6 @@ function describe(err: unknown): { kind: SyncErrorKind; message: string } {
   console.error(err);
   return { kind: 'other', message: 'Что-то пошло не так. Попробуйте ещё раз.' };
 }
-
-const plural = (n: number, one: string, few: string, many: string) => {
-  const m10 = n % 10;
-  const m100 = n % 100;
-  return m10 === 1 && m100 !== 11 ? one : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? few : many;
-};
 
 /** "Отправить" or "Подтянуть". Errors end up in the session state for the UI to explain. */
 export async function runSync(kind: 'push' | 'pull'): Promise<boolean> {

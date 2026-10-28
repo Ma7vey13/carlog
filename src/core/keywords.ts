@@ -31,22 +31,28 @@ export interface LineRef {
   name: string;
 }
 
-/**
- * History lines that match an item's keywords but are not linked to it yet — for
- * "Найдено N строк в истории — привязать?" after the owner adds or edits an item.
- */
-export function unlinkedMatchingLines(bundles: readonly VisitBundle[], item: RegulationItem): LineRef[] {
-  if (!item.keywords.length) return [];
+/** History lines (live, in active documents) matching the keyword variants, newest first. */
+export function matchingLines(bundles: readonly VisitBundle[], keywords: readonly string[], exceptLinkedTo: Id | null = null): LineRef[] {
+  if (!keywords.length) return [];
+  const item = { keywords: [...keywords] };
   const out: LineRef[] = [];
   for (const b of bundles) {
     if (b.visit.deleted) continue;
     for (const d of activeDocuments(b)) {
       if (d.document.deleted) continue;
       for (const l of d.lines) {
-        if (l.deleted || l.regulationItemIds.includes(item.id)) continue;
+        if (l.deleted || (exceptLinkedTo !== null && l.regulationItemIds.includes(exceptLinkedTo))) continue;
         if (matchesItem(l.name, item) || matchesItem(l.rawName, item)) out.push({ visitId: b.visit.id, lineId: l.id, date: b.visit.date, name: l.name });
       }
     }
   }
   return out.sort((a, b) => b.date.localeCompare(a.date));
+}
+
+/**
+ * History lines that match an item's keywords but are not linked to it yet — for
+ * "Найдено N строк в истории — привязать?" after the owner adds or edits an item.
+ */
+export function unlinkedMatchingLines(bundles: readonly VisitBundle[], item: RegulationItem): LineRef[] {
+  return matchingLines(bundles, item.keywords, item.id);
 }

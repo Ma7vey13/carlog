@@ -27,6 +27,10 @@ describe('parseHash', () => {
     expect(parseHash('#/history/%E0%A4%A').rest).toEqual(['%E0%A4%A']);
   });
 
+  it('keeps the home tab for its cards', () => {
+    expect(parseHash('#/state/item/abc')).toEqual({ tab: 'state', path: '/state/item/abc', rest: ['item', 'abc'] });
+  });
+
   it('returns no tab for unknown paths', () => {
     expect(parseHash('#/nope').tab).toBeNull();
   });

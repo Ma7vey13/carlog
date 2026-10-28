@@ -10,6 +10,7 @@ import { activeDocuments, type VisitBundle } from './bundle';
 import { addDays, addMonths, daysBetween } from './dates';
 import type { Id, IsoDate, ManualEvent, RegulationItem, Settings } from './model';
 import { forecastKm, type MileagePoint } from './mileage';
+import { matchKey } from './normalize';
 
 export type ScheduleStatus = 'red' | 'yellow' | 'green' | 'gray';
 
@@ -63,6 +64,18 @@ export function currentMileage(points: readonly MileagePoint[], today: IsoDate):
   return { km: f.km, estimated: f.km !== f.lastKm || f.lastDate !== today, lastDate: f.lastDate, lastKm: f.lastKm, dailyAvg: f.dailyAvg };
 }
 
+function visitExecution(b: VisitBundle, points: readonly MileagePoint[]): Execution {
+  let km = b.visit.odometerKm;
+  let approximate = false;
+  if (km === null) {
+    // e.g. a purchase document without mileage: estimate from the readings before that date
+    const f = forecastKm(points, b.visit.date);
+    km = f ? f.km : null;
+    approximate = km !== null;
+  }
+  return { date: b.visit.date, km, approximate, source: 'visit', visitId: b.visit.id, manualEventId: null, note: '' };
+}
+
 /** Executions of one item, newest first. */
 export function executionsOf(item: RegulationItem, bundles: readonly VisitBundle[], events: readonly ManualEvent[], points: readonly MileagePoint[]): Execution[] {
   const out: Execution[] = [];
@@ -70,15 +83,7 @@ export function executionsOf(item: RegulationItem, bundles: readonly VisitBundle
     if (b.visit.deleted || b.visit.status !== 'confirmed') continue;
     const linked = activeDocuments(b).some((d) => !d.document.deleted && d.lines.some((l) => !l.deleted && l.regulationItemIds.includes(item.id)));
     if (!linked) continue;
-    let km = b.visit.odometerKm;
-    let approximate = false;
-    if (km === null) {
-      // e.g. a purchase document without mileage: estimate from the readings around that date
-      const f = forecastKm(points, b.visit.date);
-      km = f ? f.km : null;
-      approximate = km !== null;
-    }
-    out.push({ date: b.visit.date, km, approximate, source: 'visit', visitId: b.visit.id, manualEventId: null, note: '' });
+    out.push(visitExecution(b, points));
   }
   for (const e of events) {
     if (e.deleted || e.regulationItemId !== item.id) continue;
@@ -165,4 +170,34 @@ export function actualIntervals(executions: readonly Execution[]): IntervalStep[
     out.push({ from, to, days: daysBetween(from.date, to.date), km: from.km !== null && to.km !== null ? to.km - from.km : null });
   }
   return out;
+}
+
+export interface PartHistory {
+  /** matchKey of the line name: lines named the same are one part. */
+  key: string;
+  name: string;
+  executions: Execution[];
+}
+
+/**
+ * Everything done to a component (and its sub-components), grouped by line name, newest first —
+ * for the component card: "Колодки тормозные перед.: 12.03.25 → 22.07.25, 5 000 км".
+ */
+export function componentHistory(componentIds: ReadonlySet<Id>, bundles: readonly VisitBundle[], points: readonly MileagePoint[]): PartHistory[] {
+  const groups = new Map<string, PartHistory>();
+  for (const b of bundles) {
+    if (b.visit.deleted || b.visit.status !== 'confirmed') continue;
+    for (const d of activeDocuments(b)) {
+      if (d.document.deleted) continue;
+      for (const l of d.lines) {
+        if (l.deleted || l.kind === 'material' || !l.componentId || !componentIds.has(l.componentId)) continue;
+        const key = matchKey(l.name);
+        const group = groups.get(key) ?? { key, name: l.name, executions: [] };
+        if (!group.executions.some((e) => e.visitId === b.visit.id)) group.executions.push(visitExecution(b, points));
+        groups.set(key, group);
+      }
+    }
+  }
+  for (const g of groups.values()) g.executions.sort((a, b) => b.date.localeCompare(a.date));
+  return [...groups.values()].sort((a, b) => b.executions[0]!.date.localeCompare(a.executions[0]!.date) || a.name.localeCompare(b.name, 'ru'));
 }

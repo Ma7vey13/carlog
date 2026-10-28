@@ -8,6 +8,7 @@ import { startSession } from './sync/session';
 import './styles/global.css';
 import './styles/forms.css';
 import './styles/review.css';
+import './styles/state.css';
 
 void requestPersistenceOnFirstRun();
 ensureSeed(getDb())

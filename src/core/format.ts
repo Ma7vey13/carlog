@@ -56,3 +56,11 @@ export function formatBytes(bytes: number): string {
   const rounded = unit === 0 ? String(Math.round(value)) : value.toFixed(value < 10 ? 1 : 0);
   return `${rounded.replace('.', ',')}${NBSP}${units[unit]}`;
 }
+
+/** Russian plural form: plural(3, 'день', 'дня', 'дней') → 'дня'. */
+export function plural(n: number, one: string, few: string, many: string): string {
+  const abs = Math.abs(n);
+  const m10 = abs % 10;
+  const m100 = abs % 100;
+  return m10 === 1 && m100 !== 11 ? one : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? few : many;
+}
