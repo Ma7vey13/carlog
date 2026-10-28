@@ -2,10 +2,11 @@
 
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { VisitBundle } from '../core/bundle';
-import type { Component, Draft, ExpectedPartRule, Id, MatchRule, MileageEntry, RegulationItem, Scan } from '../core/model';
+import type { Component, Draft, ExpectedPartRule, Id, ManualEvent, MatchRule, MileageEntry, RegulationItem, Scan, Settings } from '../core/model';
 import { isOpenDraft, loadDrafts } from './drafts';
 import { loadScans } from './scans';
 import { getDb } from './db';
+import { loadManualEvents, loadRegulationItems, loadSettings } from './regulation';
 import { loadMileage, loadVisitBundle, loadVisitBundles } from './visits';
 
 /** undefined while loading. */
@@ -27,7 +28,15 @@ export function useMileage(): MileageEntry[] | undefined {
 }
 
 export function useRegulationItems(): RegulationItem[] | undefined {
-  return useLiveQuery(async () => (await getDb().regulationItems.toArray()).filter((r) => !r.deleted), []);
+  return useLiveQuery(() => loadRegulationItems(getDb()), []);
+}
+
+export function useManualEvents(): ManualEvent[] | undefined {
+  return useLiveQuery(() => loadManualEvents(getDb()), []);
+}
+
+export function useSettings(): Settings | undefined {
+  return useLiveQuery(() => loadSettings(getDb()), []);
 }
 
 export function useDrafts(): Draft[] | undefined {

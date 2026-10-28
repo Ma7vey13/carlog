@@ -5,6 +5,7 @@ import { activeDocuments, type VisitBundle } from './bundle';
 import { suggestComponentId } from './components';
 import { isIsoDate, todayIso } from './dates';
 import { newId } from './ids';
+import { suggestRegulationIds } from './keywords';
 import { formatQty, kopecksToInput, lineTotal, parseQty, parseRubles } from './money';
 import type {
   Axle,
@@ -14,6 +15,7 @@ import type {
   LineItem,
   LineKind,
   MileageEntry,
+  RegulationItem,
   Side,
   SyncFields,
   Visit,
@@ -51,6 +53,8 @@ export interface LineForm {
   componentId: Id | null;
   componentTouched: boolean;
   regulationItemIds: Id[];
+  /** False while regulation items follow the name's keywords automatically. */
+  regulationTouched: boolean;
 }
 
 export interface DocumentForm {
@@ -119,6 +123,7 @@ export function emptyLine(kind: LineKind = 'work'): LineForm {
     componentId: null,
     componentTouched: false,
     regulationItemIds: [],
+    regulationTouched: false,
   };
 }
 
@@ -161,13 +166,18 @@ export function emptyVisitForm(today: string = todayIso()): VisitForm {
 // Editing helpers: keep derived fields (sum, component, position) in step with what was typed.
 
 /** Applies a change to a line and recomputes the fields that follow it automatically. */
-export function updateLine(line: LineForm, patch: Partial<LineForm>, hints: readonly NameHint[] = []): LineForm {
+export function updateLine(line: LineForm, patch: Partial<LineForm>, hints: readonly NameHint[] = [], regulation: readonly RegulationItem[] = []): LineForm {
   const next: LineForm = { ...line, ...patch };
 
   if ('sum' in patch) next.sumTouched = patch.sum !== '';
   if ('componentId' in patch) next.componentTouched = true;
   if ('componentId' in patch || 'nameOverride' in patch || 'regulationItemIds' in patch) next.bindingEdited = true;
   if ('axle' in patch || 'side' in patch) next.positionTouched = true;
+  if ('regulationItemIds' in patch) next.regulationTouched = true;
+
+  if (('rawName' in patch || 'nameOverride' in patch) && !next.regulationTouched && regulation.length) {
+    next.regulationItemIds = suggestLineRegulation(next, regulation);
+  }
 
   if ('rawName' in patch) {
     const hint = findHint(next.rawName, hints);
@@ -190,6 +200,12 @@ export function updateLine(line: LineForm, patch: Partial<LineForm>, hints: read
     next.sum = qty !== null && price !== null ? kopecksToInput(lineTotal(qty, price)) : '';
   }
   return next;
+}
+
+/** Regulation items whose keywords match the line's printed name or the name the owner gave it. */
+export function suggestLineRegulation(line: Pick<LineForm, 'rawName' | 'nameOverride'>, regulation: readonly RegulationItem[]): Id[] {
+  const ids = new Set([...suggestRegulationIds(line.rawName, regulation), ...suggestRegulationIds(line.nameOverride, regulation)]);
+  return regulation.filter((r) => ids.has(r.id)).map((r) => r.id);
 }
 
 function findHint(rawName: string, hints: readonly NameHint[]): NameHint | undefined {
@@ -222,11 +238,11 @@ export function nameHintsFrom(bundles: readonly VisitBundle[]): NameHint[] {
   return hints;
 }
 
-export function applyTemplate(form: VisitForm, template: VisitTemplate, hints: readonly NameHint[] = []): VisitForm {
+export function applyTemplate(form: VisitForm, template: VisitTemplate, hints: readonly NameHint[] = [], regulation: readonly RegulationItem[] = []): VisitForm {
   const [first, ...rest] = form.documents;
   const doc = first ?? emptyDocument('work_order', form.date);
   const added = template.lines.map((t) =>
-    updateLine(emptyLine(t.kind), { rawName: t.name, qty: t.qty === undefined ? '' : formatQty(t.qty) }, hints),
+    updateLine(emptyLine(t.kind), { rawName: t.name, qty: t.qty === undefined ? '' : formatQty(t.qty) }, hints, regulation),
   );
   // Drop a single untouched empty line so the template does not leave a blank row above it.
   const kept = doc.lines.filter((l) => l.rawName.trim() !== '' || l.price !== '' || l.sum !== '');
@@ -514,6 +530,8 @@ function lineToForm(l: LineItem, keepId = true): LineForm {
     componentId: l.componentId,
     componentTouched: true,
     regulationItemIds: l.regulationItemIds,
+    // A saved line keeps its links; new regulation items are linked from their card instead.
+    regulationTouched: true,
   };
 }
 

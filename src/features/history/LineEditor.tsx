@@ -26,7 +26,8 @@ function LineEditorImpl({ line, index, tree, regulation, namesListId, issues, wa
   const set = (patch: Partial<LineForm>) => onChange(line.key, patch);
   const normalized = normalizeName(line.rawName);
   const position = positionLabel(line);
-  const moreSummary = [position, line.brand, line.article, line.unit].filter(Boolean).join(' · ');
+  const linked = regulation.filter((r) => line.regulationItemIds.includes(r.id)).map((r) => r.name);
+  const moreSummary = [position, line.brand, line.article, line.unit, linked.length ? `регламент: ${linked.join(', ')}` : ''].filter(Boolean).join(' · ');
 
   return (
     <div className={review?.flagged ? 'line line--flagged' : 'line'} data-testid="line" data-line-key={line.key}>

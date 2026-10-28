@@ -4,9 +4,9 @@
 import { todayIso } from './dates';
 import type { DraftV1 } from './draftSchema';
 import { findRule } from './matchRules';
-import type { Id, MatchRule } from './model';
+import type { Id, MatchRule, RegulationItem } from './model';
 import { formatQty } from './money';
-import { emptyDocument, emptyLine, emptyVisitForm, updateLine, type NameHint, type VisitForm } from './visitForm';
+import { emptyDocument, emptyLine, emptyVisitForm, suggestLineRegulation, updateLine, type NameHint, type VisitForm } from './visitForm';
 
 const rubToInput = (v: number | null): string => (v === null ? '' : String(v).replace('.', ','));
 
@@ -15,6 +15,7 @@ export interface DraftToFormOptions {
   rules?: readonly MatchRule[];
   scanIds?: Id[];
   today?: string;
+  regulation?: readonly RegulationItem[];
 }
 
 /**
@@ -27,7 +28,8 @@ export function draftToForm(draft: DraftV1, opts: DraftToFormOptions = {}): Visi
   const form = emptyVisitForm(d.date ?? today);
 
   const lines = draft.lines.map((l) => {
-    let line = updateLine(emptyLine(l.kind), { rawName: l.name }, opts.hints ?? []);
+    const regulation = opts.regulation ?? [];
+    let line = updateLine(emptyLine(l.kind), { rawName: l.name }, opts.hints ?? [], regulation);
     line = {
       ...line,
       n: l.n,
@@ -47,8 +49,11 @@ export function draftToForm(draft: DraftV1, opts: DraftToFormOptions = {}): Visi
         nameOverride: rule.name,
         componentId: rule.componentId,
         componentTouched: true,
-        regulationItemIds: rule.regulationItemIds,
       };
+      // A learned rule's regulation links win; without them, keywords of the rule's name apply too.
+      line = rule.regulationItemIds.length
+        ? { ...line, regulationItemIds: rule.regulationItemIds, regulationTouched: true }
+        : { ...line, regulationItemIds: suggestLineRegulation(line, regulation) };
     }
     return line;
   });

@@ -7,7 +7,7 @@ import { formatDate } from '../../core/format';
 import type { DraftV1 } from '../../core/draftSchema';
 import { draftToForm } from '../../core/draftToForm';
 import { mileagePoints } from '../../core/mileage';
-import type { Draft, ExpectedPartRule, Id, MatchRule, MileageEntry } from '../../core/model';
+import type { Draft, ExpectedPartRule, Id, MatchRule, MileageEntry, RegulationItem } from '../../core/model';
 import { checkVisitForm, emptyDocument, emptyVisitForm, nameHintsFrom } from '../../core/visitForm';
 import { getDb } from '../../db/db';
 import { rejectDraft, saveReviewedDraft } from '../../db/drafts';
@@ -32,8 +32,9 @@ export function ReviewScreen({ draft }: { draft: Draft }) {
   const mileage = useMileage();
   const rules = useExpectedPartRules();
   const matchRules = useMatchRules();
-  if (!bundles || !mileage || !rules || !matchRules) return <p className="muted">Загрузка…</p>;
-  return <ReviewForm draft={draft} bundles={bundles} mileage={mileage} rules={rules} matchRules={matchRules} />;
+  const regulation = useRegulationItems();
+  if (!bundles || !mileage || !rules || !matchRules || !regulation) return <p className="muted">Загрузка…</p>;
+  return <ReviewForm draft={draft} bundles={bundles} mileage={mileage} rules={rules} matchRules={matchRules} regulation={regulation} />;
 }
 
 interface FormProps {
@@ -42,6 +43,7 @@ interface FormProps {
   mileage: MileageEntry[];
   rules: ExpectedPartRule[];
   matchRules: MatchRule[];
+  regulation: RegulationItem[];
 }
 
 function focusFieldByLabel(text: string) {
@@ -51,22 +53,22 @@ function focusFieldByLabel(text: string) {
   (input as HTMLInputElement | null)?.focus({ preventScroll: true });
 }
 
-function ReviewForm({ draft, bundles, mileage, rules, matchRules }: FormProps) {
+function ReviewForm({ draft, bundles, mileage, rules, matchRules, regulation }: FormProps) {
   const payload = draft.payload as DraftV1 | null;
   const hints = useMemo(() => nameHintsFrom(bundles), [bundles]);
   const shops = useMemo(() => distinctShops(bundles), [bundles]);
   const { form, handlers } = useVisitFormState(
     () =>
       payload
-        ? draftToForm(payload, { hints, rules: matchRules, scanIds: draft.scanIds })
+        ? draftToForm(payload, { hints, rules: matchRules, scanIds: draft.scanIds, regulation })
         : { ...emptyVisitForm(), documents: [{ ...emptyDocument('work_order'), scanIds: draft.scanIds }] },
     hints,
     shops,
+    regulation,
   );
 
   const scans = useScans(draft.scanIds);
   const components = useComponents() ?? [];
-  const regulation = useRegulationItems() ?? [];
   const tree = useMemo(() => componentTree(components), [components]);
 
   const [decision, setDecision] = useState<ReviewDecision>({ mode: 'new' });

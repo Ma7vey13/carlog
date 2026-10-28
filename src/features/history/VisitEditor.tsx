@@ -36,14 +36,14 @@ function VisitFormView({ existing, bundles }: { existing: VisitBundle | null; bu
   const shops = useMemo(() => distinctShops(otherBundles), [otherBundles]);
   const lastVisit = otherBundles[0] ?? null;
 
-  const { form, setForm, dirty, setDirty, edit, handlers } = useVisitFormState(() => (existing ? bundleToForm(existing) : emptyVisitForm()), hints, shops);
+  const regulation = useRegulationItems() ?? [];
+  const { form, setForm, dirty, setDirty, edit, handlers } = useVisitFormState(() => (existing ? bundleToForm(existing) : emptyVisitForm()), hints, shops, regulation);
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirm, setConfirm] = useState<null | 'warnings' | 'cancel' | 'copy'>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const components = useComponents() ?? [];
-  const regulation = useRegulationItems() ?? [];
   const tree = useMemo(() => componentTree(components), [components]);
 
   const check = useMemo(() => checkVisitForm(form), [form]);
@@ -105,7 +105,7 @@ function VisitFormView({ existing, bundles }: { existing: VisitBundle | null; bu
               value=""
               onChange={(e) => {
                 const t = VISIT_TEMPLATES.find((x) => x.id === e.target.value);
-                if (t) edit((f) => applyTemplate(f, t, hints));
+                if (t) edit((f) => applyTemplate(f, t, hints, regulation));
               }}
             >
               <option value="">Вставить шаблон…</option>

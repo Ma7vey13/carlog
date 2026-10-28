@@ -34,7 +34,7 @@ export interface VisitFormHandlers {
 }
 
 /** Form state with the edit handlers; `edit` marks the form dirty. */
-export function useVisitFormState(initial: () => VisitForm, hints: readonly NameHint[], shops: readonly Shop[]) {
+export function useVisitFormState(initial: () => VisitForm, hints: readonly NameHint[], shops: readonly Shop[], regulation: readonly RegulationItem[] = []) {
   const [form, setForm] = useState<VisitForm>(initial);
   const [dirty, setDirty] = useState(false);
 
@@ -66,11 +66,11 @@ export function useVisitFormState(initial: () => VisitForm, hints: readonly Name
     onAddLine: (docKey, kind, preset) =>
       mapDoc(docKey, (d) => {
         let line = emptyLine(kind);
-        if (preset?.rawName) line = updateLine(line, { rawName: preset.rawName }, hints);
+        if (preset?.rawName) line = updateLine(line, { rawName: preset.rawName }, hints, regulation);
         return { ...d, lines: [...d.lines, { ...line, ...preset }] };
       }),
     onLineChange: (docKey, lineKey, patch) =>
-      mapDoc(docKey, (d) => ({ ...d, lines: d.lines.map((l) => (l.key === lineKey ? updateLine(l, patch, hints) : l)) })),
+      mapDoc(docKey, (d) => ({ ...d, lines: d.lines.map((l) => (l.key === lineKey ? updateLine(l, patch, hints, regulation) : l)) })),
     onLineRemove: (docKey, lineKey) => mapDoc(docKey, (d) => ({ ...d, lines: d.lines.filter((l) => l.key !== lineKey) })),
   };
 
