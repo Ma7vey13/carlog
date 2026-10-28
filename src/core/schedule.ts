@@ -48,6 +48,8 @@ export interface ItemSchedule {
   dueKm: number | null;
   dueDate: IsoDate | null;
   remainingKm: number | null;
+  /** remainingKm is counted from a forecast of today's mileage, not a reading. */
+  remainingKmEstimated: boolean;
   remainingDays: number | null;
   /** Rough days until due (km converted with the average daily mileage) — for sorting. */
   urgencyDays: number | null;
@@ -107,7 +109,7 @@ export function scheduleItem(
   const last = executions[0] ?? null;
   const iv = intervalsOf(item, ctx.thresholds.severeConditions);
   const base = { item, executions, last, intervalKm: iv.km, intervalMonths: iv.months, severeUsed: iv.severeUsed };
-  const empty = { dueKm: null, dueDate: null, remainingKm: null, remainingDays: null, urgencyDays: null };
+  const empty = { dueKm: null, dueDate: null, remainingKm: null, remainingKmEstimated: false, remainingDays: null, urgencyDays: null };
 
   if (!iv.km && !iv.months) return { ...base, ...empty, status: 'gray', grayReason: 'no-interval' };
   if (!last) return { ...base, ...empty, status: 'gray', grayReason: 'no-data' };
@@ -131,7 +133,8 @@ export function scheduleItem(
   const kmAsDays = remainingKm !== null && avg ? remainingKm / avg : null;
   const urgencyDays = [kmAsDays, remainingDays].filter((x): x is number => x !== null).reduce<number | null>((m, x) => (m === null || x < m ? x : m), null);
 
-  return { ...base, status, grayReason: null, dueKm, dueDate, remainingKm, remainingDays, urgencyDays };
+  const remainingKmEstimated = remainingKm !== null && !!current?.estimated;
+  return { ...base, status, grayReason: null, dueKm, dueDate, remainingKm, remainingKmEstimated, remainingDays, urgencyDays };
 }
 
 const ORDER: Record<ScheduleStatus, number> = { red: 0, yellow: 1, gray: 2, green: 3 };

@@ -24,8 +24,23 @@ describe('schedule wording', () => {
 
   it('says what is overdue', () => {
     expect(S(dueText(scheduleItem(COOLANT, ctx)))).toBe('просрочено на 19 327 км, срок прошёл 06.10.2023');
-    expect(S(dueText(scheduleItem(PLUGS, ctx)))).toBe('срок прошёл 06.10.2025');
     expect(dueText(scheduleItem(HOSES, ctx))).toBe('интервал не задан');
+  });
+
+  it('when only one limit has come, says which one and what is left of the other', () => {
+    // 60 000 km or 48 months from 06.10.2021: the months have run out, the km not yet (today's km is a forecast)
+    const plugs = scheduleItem(PLUGS, ctx);
+    expect(plugs.status).toBe('red');
+    expect(plugs.remainingKmEstimated).toBe(true);
+    expect(S(dueText(plugs))).toBe('по времени срок прошёл 06.10.2025 (48 мес); по пробегу ещё ≈ 673 км');
+    // the km has run out, the time not yet
+    expect(S(dueText({ ...plugs, remainingKm: -700, remainingDays: 200, dueDate: '2026-09-17' }))).toBe('по пробегу просрочено на 700 км; по времени — до 17.09.2026');
+    expect(S(dueText({ ...plugs, remainingKm: 0, remainingDays: 200, dueDate: '2026-09-17' }))).toBe('пробег подошёл; по времени — до 17.09.2026');
+    // a reading of today: no «≈»; the time limit is today
+    expect(S(dueText({ ...plugs, remainingKmEstimated: false, remainingDays: 0 }))).toBe('по времени срок сегодня; по пробегу ещё 673 км');
+    // only one limit in the item: as before
+    expect(S(dueText({ ...plugs, remainingKm: null }))).toBe('срок прошёл 06.10.2025 (48 мес)');
+    expect(S(dueText({ ...plugs, remainingKm: -700, remainingDays: null, dueDate: null }))).toBe('просрочено на 700 км');
   });
 
   it('describes intervals and executions', () => {

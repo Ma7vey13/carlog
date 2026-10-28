@@ -32,16 +32,31 @@ export function itemIntervalText(item: RegulationItem): string {
   return severe ? `${normal} (тяжёлые условия: ${severe})` : normal;
 }
 
-/** What is left or how much it is overdue. */
+/**
+ * What is left or how much it is overdue. When only one limit has come ("whichever comes first"),
+ * it says which one and how much is left of the other: "по времени срок прошёл 11.04.2026 (12 мес);
+ * по пробегу ещё ≈ 4 300 км".
+ */
 export function dueText(s: ItemSchedule): string {
   if (s.status === 'gray') return s.grayReason === 'no-interval' ? 'интервал не задан' : 'нет данных';
   const parts: string[] = [];
   const kmOver = s.remainingKm !== null && s.remainingKm <= 0;
   const dateOver = s.remainingDays !== null && s.remainingDays <= 0;
-  if (kmOver || dateOver) {
-    if (kmOver) parts.push(s.remainingKm === 0 ? 'пробег подошёл' : `просрочено на ${formatKm(-s.remainingKm!)}`);
-    if (dateOver) parts.push(s.remainingDays === 0 ? 'срок сегодня' : `срок прошёл ${formatDate(s.dueDate)}`);
+  const kmText = (km: number) => `${s.remainingKmEstimated ? '≈ ' : ''}${formatKm(km)}`;
+  if (kmOver && dateOver) {
+    parts.push(s.remainingKm === 0 ? 'пробег подошёл' : `просрочено на ${formatKm(-s.remainingKm!)}`);
+    parts.push(s.remainingDays === 0 ? 'срок сегодня' : `срок прошёл ${formatDate(s.dueDate)}`);
     return parts.join(', ');
+  }
+  if (dateOver) {
+    const months = s.intervalMonths ? ` (${monthsText(s.intervalMonths)})` : '';
+    if (s.remainingKm === null) return s.remainingDays === 0 ? 'срок сегодня' : `срок прошёл ${formatDate(s.dueDate)}${months}`;
+    const time = s.remainingDays === 0 ? 'по времени срок сегодня' : `по времени срок прошёл ${formatDate(s.dueDate)}${months}`;
+    return `${time}; по пробегу ещё ${kmText(s.remainingKm)}`;
+  }
+  if (kmOver) {
+    const km = s.remainingKm === 0 ? 'пробег подошёл' : `просрочено на ${formatKm(-s.remainingKm!)}`;
+    return s.dueDate ? `${s.remainingKm === 0 ? km : `по пробегу ${km}`}; по времени — до ${formatDate(s.dueDate)}` : km;
   }
   if (s.remainingKm !== null) parts.push(`через ${formatKm(s.remainingKm)}`);
   if (s.dueDate) parts.push(`до ${formatDate(s.dueDate)}`);
