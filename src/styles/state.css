@@ -176,6 +176,9 @@
 
 .sched-card__due {
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 18px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -256,4 +259,52 @@
 
 .part-history .hint {
   margin: 4px 0 0;
+}
+
+/* Self-check list */
+.check-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.check-row {
+  gap: 8px;
+}
+
+.check-row__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.check-row__head .sched-dot {
+  margin-top: 5px;
+}
+
+.check-row__body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.check-row__name {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.check-row .sched-row__due {
+  margin: 0;
+}
+
+.check-row .btn-row {
+  align-items: center;
+}
+
+.check-row__more {
+  margin-left: auto;
+  font-size: 14px;
 }

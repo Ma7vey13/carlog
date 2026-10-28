@@ -35,6 +35,18 @@ export function MoreScreen({ route }: { route: Route }) {
             ›
           </span>
         </a>
+        <a className="menu-link" href={hrefFor('/state/self-check')}>
+          <span>Самопроверка: пункты и журнал</span>
+          <span className="muted" aria-hidden="true">
+            ›
+          </span>
+        </a>
+        <a className="menu-link" href={hrefFor('/state/docs')}>
+          <span>Документы со сроком: ОСАГО и др.</span>
+          <span className="muted" aria-hidden="true">
+            ›
+          </span>
+        </a>
         <a className="menu-link" href={hrefFor('/more/schedule')}>
           <span>Расчёт сроков: тяжёлые условия, пороги</span>
           <span className="muted" aria-hidden="true">

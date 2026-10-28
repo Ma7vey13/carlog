@@ -4,9 +4,7 @@ import { parseDraftText } from '../../core/draftSchema';
 import type { Id } from '../../core/model';
 import { getDb } from '../../db/db';
 import { addPagesToDraft, createDraftFromJson, createDraftFromScans } from '../../db/drafts';
-import { storeScans } from '../../db/scans';
-import { processFiles, ScanError } from '../../scan/process';
-import { PlusIcon } from '../../ui/icons';
+import { ScanPicker } from '../scans/ScanPicker';
 
 /**
  * "Добавить документ" (SPEC section 6): camera, gallery or PDF. Everything picked at once is one
@@ -14,76 +12,21 @@ import { PlusIcon } from '../../ui/icons';
  * With `draftId` the pages are appended to that draft instead ("Добавить страницу").
  */
 export function AddDocument({ draftId }: { draftId?: Id }) {
-  const cameraRef = useRef<HTMLInputElement>(null);
-  const filesRef = useRef<HTMLInputElement>(null);
-  const [progress, setProgress] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const onFiles = async (list: FileList | null) => {
-    const files = [...(list ?? [])];
-    if (!files.length) return;
-    setError(null);
-    setProgress('Обрабатываю…');
-    try {
-      const pages = await processFiles(files, setProgress);
-      setProgress('Сохраняю…');
-      const db = getDb();
-      const scanIds = await storeScans(db, pages);
-      if (draftId) {
-        await addPagesToDraft(db, draftId, scanIds);
-      } else {
-        const id = await createDraftFromScans(db, scanIds);
-        window.location.hash = `/inbox/${id}`;
-      }
-    } catch (err) {
-      console.error(err);
-      setError(err instanceof ScanError ? err.message : 'Не удалось обработать файл. Попробуйте ещё раз или выберите другой файл.');
-    } finally {
-      setProgress(null);
-      if (cameraRef.current) cameraRef.current.value = '';
-      if (filesRef.current) filesRef.current.value = '';
-    }
-  };
-
   return (
-    <div className="stack">
-      <div className="btn-row">
-        <button type="button" className={draftId ? 'btn btn--secondary' : 'btn btn--primary'} disabled={!!progress} onClick={() => cameraRef.current?.click()}>
-          <PlusIcon width={18} height={18} /> {draftId ? 'Сфотографировать страницу' : 'Сфотографировать'}
-        </button>
-        <button type="button" className="btn btn--secondary" disabled={!!progress} onClick={() => filesRef.current?.click()}>
-          {draftId ? 'Добавить страницу из файла' : 'Выбрать фото или PDF'}
-        </button>
-      </div>
-      <input
-        ref={cameraRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        hidden
-        data-testid="camera-input"
-        onChange={(e) => void onFiles(e.target.files)}
-      />
-      <input
-        ref={filesRef}
-        type="file"
-        accept="image/*,application/pdf,.pdf"
-        multiple
-        hidden
-        data-testid="files-input"
-        onChange={(e) => void onFiles(e.target.files)}
-      />
-      {progress && (
-        <p className="muted" role="status">
-          {progress}
-        </p>
-      )}
-      {error && (
-        <p className="notice notice--error" role="alert">
-          {error}
-        </p>
-      )}
-    </div>
+    <ScanPicker
+      primary={!draftId}
+      cameraLabel={draftId ? 'Сфотографировать страницу' : 'Сфотографировать'}
+      filesLabel={draftId ? 'Добавить страницу из файла' : 'Выбрать фото или PDF'}
+      onStored={async (scanIds) => {
+        const db = getDb();
+        if (draftId) {
+          await addPagesToDraft(db, draftId, scanIds);
+        } else {
+          const id = await createDraftFromScans(db, scanIds);
+          window.location.hash = `/inbox/${id}`;
+        }
+      }}
+    />
   );
 }
 

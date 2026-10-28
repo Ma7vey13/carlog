@@ -11,30 +11,40 @@ import { useOpenDraftCount } from '../../db/hooks';
 import { addManualMileage } from '../../db/visits';
 import { EmptyState } from '../../ui/EmptyState';
 import { RegulationIcon } from '../../ui/icons';
+import { selfCheckText, type SelfCheckStatus } from '../../core/selfCheck';
+import type { TermStatus } from '../../core/termDocs';
 import { useSyncState, useUnsentCount } from '../sync/SyncPanel';
+import { SelfCheckScreen, useSelfCheck } from './SelfCheckScreen';
+import { TermDocsScreen, TermRow, useTermStatuses } from './TermDocsScreen';
 import { ComponentCard } from './ComponentCard';
 import { ItemCard } from './ItemCard';
 import { ManualEventDialog } from './ManualEventDialog';
 import { useSchedule } from './useSchedule';
 
-/** Home tab: `/`, `/state/item/<id>`, `/state/component/<id>`. */
+/** Home tab: `/`, `/state/item/<id>`, `/state/component/<id>`, `/state/self-check[/…]`, `/state/docs[/…]`. */
 export function StateScreen({ route }: { route: Route }) {
-  const [kind, id] = route.rest;
+  const [kind, id, action] = route.rest;
   if (kind === 'item' && id) return <ItemCard id={id} backHref={hrefFor('/')} />;
   if (kind === 'component' && id) return <ComponentCard id={id} />;
+  if (kind === 'self-check') return <SelfCheckScreen id={id ?? null} />;
+  if (kind === 'docs') return <TermDocsScreen id={id ?? null} edit={action === 'edit'} />;
   return <StateHome />;
 }
 
 /**
- * SPEC section 9, top to bottom: mileage → red and yellow items → (OSAGO, self-check: stage 7)
- * → inbox → sync status → green items, collapsed.
+ * SPEC section 9, top to bottom: mileage → red and yellow items → documents with an end date that
+ * is near or past → self-check that is due → inbox → sync status → green items, collapsed.
  */
 function StateHome() {
   const data = useSchedule();
+  const terms = useTermStatuses();
+  const checks = useSelfCheck();
   const inbox = useOpenDraftCount();
   const [marking, setMarking] = useState<RegulationItem | null>(null);
 
-  if (!data) return <p className="muted">Загрузка…</p>;
+  if (!data || !terms || !checks) return <p className="muted">Загрузка…</p>;
+
+  const termAlerts = terms.filter((t) => t.state === 'expired' || t.state === 'soon');
 
   const urgent = data.items.filter((s) => s.status === 'red' || s.status === 'yellow');
   const gray = data.items.filter((s) => s.status === 'gray');
@@ -65,6 +75,19 @@ function StateHome() {
           Ничего срочного: все пункты с данными в порядке.
         </p>
       )}
+
+      {termAlerts.length > 0 && (
+        <section className="card" aria-label="Документы со сроком" data-testid="term-alerts">
+          <h2 className="card__title">Документы</h2>
+          <ul className="sched-list">
+            {termAlerts.map((t) => (
+              <TermRow key={t.doc.id} s={t} />
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <SelfCheckCard checks={checks} />
 
       {inbox > 0 && (
         <a className="notice notice--warning notice--link" href={hrefFor('/inbox')} data-testid="inbox-line">
@@ -97,6 +120,19 @@ function StateHome() {
           </ul>
         </details>
       )}
+
+      <section className="card" aria-label="Ещё">
+        <a className="menu-link" href={hrefFor('/state/self-check')}>
+          <span>Самопроверка</span>
+          <span className="muted">
+            в норме {checks.filter((c) => c.state === 'ok').length} из {checks.length} ›
+          </span>
+        </a>
+        <a className="menu-link" href={hrefFor('/state/docs')} data-testid="docs-link">
+          <span>Документы со сроком</span>
+          <span className="muted">{docsSummary(terms)} ›</span>
+        </a>
+      </section>
 
       {data.settings.severeConditions && (
         <p className="hint">
@@ -236,4 +272,61 @@ function SyncLine() {
       </span>
     </a>
   );
+}
+
+/** Self-check on the main screen: "Нужно внимание" items one by one, due ones as a summary. */
+function SelfCheckCard({ checks }: { checks: SelfCheckStatus[] }) {
+  const attention = checks.filter((c) => c.state === 'attention');
+  const due = checks.filter((c) => c.state === 'due');
+  if (!attention.length && !due.length) return null;
+  return (
+    <section className="card" aria-label="Самопроверка" data-testid="self-check-card">
+      <h2 className="card__title">Самопроверка</h2>
+      <ul className="sched-list">
+        {attention.map((c) => (
+          <li key={c.item.id} className="sched-row sched-row--red" data-testid="attention-row">
+            <a className="sched-row__link" href={hrefFor(`/state/self-check/${c.item.id}`)}>
+              <span className="sched-dot" aria-hidden="true" />
+              <span className="sched-row__body">
+                <span className="sched-row__name">{c.item.name}</span>
+                <span className="sched-row__due">{selfCheckText(c)}</span>
+              </span>
+              <span className="muted" aria-hidden="true">
+                ›
+              </span>
+            </a>
+          </li>
+        ))}
+        {due.length > 0 && (
+          <li className="sched-row sched-row--yellow" data-testid="due-row">
+            <a className="sched-row__link" href={hrefFor('/state/self-check')}>
+              <span className="sched-dot" aria-hidden="true" />
+              <span className="sched-row__body">
+                <span className="sched-row__name">
+                  Пора проверить: {due.length} {plural(due.length, 'пункт', 'пункта', 'пунктов')}
+                </span>
+                <span className="sched-row__due">
+                  {due
+                    .slice(0, 3)
+                    .map((c) => c.item.name.replace(/\s*\(.*\)$/, ''))
+                    .join(', ')}
+                  {due.length > 3 ? '…' : ''}
+                </span>
+              </span>
+              <span className="muted" aria-hidden="true">
+                ›
+              </span>
+            </a>
+          </li>
+        )}
+      </ul>
+    </section>
+  );
+}
+
+function docsSummary(terms: TermStatus[]): string {
+  const osago = terms.find((t) => t.doc.kind === 'osago' && t.state !== 'replaced');
+  if (osago?.doc.endDate) return `ОСАГО до ${formatDate(osago.doc.endDate)}`;
+  const current = terms.filter((t) => t.state !== 'replaced').length;
+  return current ? `${current} шт.` : 'не внесены';
 }
