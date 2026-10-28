@@ -1,7 +1,7 @@
 // Russian UI labels for stored enum values.
 
 import type { TotalsMismatch } from './bundle';
-import type { Axle, CarDocument, DocumentType, DraftStatus, LineKind, Performer, RegulationAction, Side, VisitKind } from './model';
+import type { Axle, CarDocument, DocumentType, DraftStatus, LineKind, Performer, RegulationAction, RegulationSource, Side, VisitKind } from './model';
 import type { ScheduleStatus } from './schedule';
 import { formatDate } from './format';
 import { formatRub } from './money';
@@ -66,3 +66,11 @@ export const SCHEDULE_STATUS_LABELS: Record<ScheduleStatus, string> = {
 
 export const REGULATION_ACTION_LABELS: Record<RegulationAction, string> = { replace: 'Замена', inspect: 'Проверка' };
 export const PERFORMER_LABELS: Record<Performer, string> = { service: 'Сервис', self: 'Сам' };
+/** Where a regulation item comes from (short, for tags and the source field). */
+export const REGULATION_SOURCE_LABELS: Record<RegulationSource, string> = { service: 'Сервис', instruction: 'Инструкция' };
+/** Group titles on the regulation screen. */
+export const REGULATION_SOURCE_GROUPS: Record<RegulationSource | 'none', string> = {
+  service: 'По графику сервиса',
+  instruction: 'Дополнительно по инструкции',
+  none: 'Источник не указан',
+};

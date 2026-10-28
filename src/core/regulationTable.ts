@@ -10,7 +10,7 @@
 
 import { suggestComponentId } from './components';
 import { formatKm } from './format';
-import type { Component, Id, Performer, RegulationAction, RegulationItem } from './model';
+import type { Component, Id, Performer, RegulationAction, RegulationItem, RegulationSource } from './model';
 import { matchKey } from './normalize';
 import type { Grid } from './table';
 
@@ -26,6 +26,8 @@ export interface ParsedItem {
   keywords: string[];
   componentName: string | null;
   note: string;
+  /** From the «Источник» column; null = not stated (the screen's choice applies). */
+  source: RegulationSource | null;
   /** 1-based row in the table, for messages. */
   row: number;
 }
@@ -43,6 +45,7 @@ export type ColumnRole =
   | 'keywords'
   | 'component'
   | 'note'
+  | 'source'
   | 'skip';
 
 export const COLUMN_ROLE_LABELS: Record<ColumnRole, string> = {
@@ -58,6 +61,7 @@ export const COLUMN_ROLE_LABELS: Record<ColumnRole, string> = {
   keywords: 'Ключевые слова',
   component: 'Узел',
   note: 'Заметка',
+  source: 'Источник (сервис / инструкция)',
   skip: '— не использовать —',
 };
 
@@ -146,6 +150,16 @@ export function markOf(cell: string): RegulationAction | 'mark' | null {
   return null;
 }
 
+/** «Сервис» / «СТО» → the service's schedule; «Инструкция» / «Руководство» / «Завод» → the car's manual. */
+export function parseSourceValue(cell: string): RegulationSource | null {
+  const t = cell.trim().toLowerCase();
+  if (!t) return null;
+  // "сервисная книжка" is the maker's schedule, so the manual words go first.
+  if (/инструкц|руководств|завод|производит|книжк|manual|maker|factory/.test(t)) return 'instruction';
+  if (/сервис|^сто(\s|$)|мастер|дилер|service|garage/.test(t)) return 'service';
+  return null;
+}
+
 /** Action from the name: "Проверка …" / "Осмотр …" → inspect, otherwise replace. */
 function actionFromName(name: string): RegulationAction {
   return /^(провер|осмотр|контрол|диагност|регулир)/i.test(name.trim()) ? 'inspect' : 'replace';
@@ -169,6 +183,7 @@ function gridHeader(cell: string, thousandsHint: boolean): { km: number | null; 
 export function roleFromHeader(header: string, nameTaken: boolean): ColumnRole {
   const h = header.toLowerCase();
   if (!h) return 'skip';
+  if (/источн|откуда|^чей|^чья/.test(h)) return 'source';
   if (/ключ/.test(h)) return 'keywords';
   if (/примеч|замет|коммент/.test(h)) return 'note';
   if (/кто|исполн/.test(h)) return 'performer';
@@ -302,6 +317,7 @@ function parseList(grid: Grid, layout: ListLayout): ParseResult {
       keywords: splitKeywords(get('keywords')),
       componentName: get('component') || section,
       note: get('note'),
+      source: parseSourceValue(get('source')),
       row: r + 1,
     });
   }
@@ -351,6 +367,7 @@ function parseMatrix(grid: Grid, layout: MatrixLayout): ParseResult {
         keywords: [],
         componentName: section,
         note: '',
+        source: null,
         row: r + 1,
       });
     }
@@ -378,12 +395,13 @@ export function keywordsFromName(name: string): string[] {
 
 export type ItemInput = Pick<
   RegulationItem,
-  'name' | 'componentId' | 'action' | 'performer' | 'intervalKm' | 'intervalMonths' | 'severeIntervalKm' | 'severeIntervalMonths' | 'keywords' | 'note'
+  'name' | 'componentId' | 'action' | 'performer' | 'intervalKm' | 'intervalMonths' | 'severeIntervalKm' | 'severeIntervalMonths' | 'keywords' | 'note' | 'source'
 >;
 
 export interface ImportPlan {
   create: ItemInput[];
-  update: Array<{ existing: RegulationItem; input: ItemInput; changes: string[] }>;
+  /** `merged`: the same work was in the other source's table — the more frequent interval is kept. */
+  update: Array<{ existing: RegulationItem; input: ItemInput; changes: string[]; merged?: boolean }>;
   /** Items removed by an earlier table, back now: their history and marks come back too. */
   revive: Array<{ existing: RegulationItem; input: ItemInput }>;
   unchanged: RegulationItem[];
@@ -391,6 +409,13 @@ export interface ImportPlan {
   remove: RegulationItem[];
   /** Items added by hand that the table does not mention: kept as they are. */
   keepManual: RegulationItem[];
+  /** Table items of another source (or with none stated): a table of one source leaves them be. */
+  keepOther: RegulationItem[];
+  /**
+   * Sources this table replaces; null = the whole regulation (some rows have no source stated,
+   * as with every table before sources existed).
+   */
+  scope: RegulationSource[] | null;
   /** Names that appear twice in the table (the first row is taken). */
   duplicates: string[];
 }
@@ -405,8 +430,10 @@ function componentIdFor(item: ParsedItem, components: readonly Component[], exis
   return existing ? existing.componentId : suggestComponentId(item.name);
 }
 
-export function toItemInput(p: ParsedItem, existing: RegulationItem | undefined, components: readonly Component[]): ItemInput {
+export function toItemInput(p: ParsedItem, existing: RegulationItem | undefined, components: readonly Component[], source: RegulationSource | null = p.source): ItemInput {
+  const src = source ?? existing?.source;
   return {
+    ...(src ? { source: src } : {}),
     name: p.name,
     componentId: componentIdFor(p, components, existing),
     action: p.action,
@@ -435,6 +462,39 @@ export function describeChanges(a: ItemInput, b: ItemInput): string[] {
   if (a.keywords.join('|') !== b.keywords.join('|')) out.push('ключевые слова');
   if (a.componentId !== b.componentId) out.push('узел');
   if (a.note !== b.note) out.push('заметка');
+  if ((a.source ?? null) !== (b.source ?? null)) out.push(b.source === 'service' ? 'источник: сервис' : b.source === 'instruction' ? 'источник: инструкция' : 'источник не указан');
+  return out;
+}
+
+const stricter = (a: number | null, b: number | null) => (a && b ? Math.min(a, b) : a || b || null);
+
+/**
+ * The same work in both the service's table and the manual: the more frequent wins (owner's rule).
+ * A replacement beats an inspection — then the replacement's intervals are taken as they are and the
+ * inspection goes to the note. The item counts as the service's: that is what the service does.
+ */
+export function mergeSources(current: ItemInput, incoming: ItemInput): ItemInput {
+  const base = { ...current, keywords: [...new Set([...current.keywords, ...incoming.keywords])], source: 'service' as const };
+  if (current.action !== incoming.action) {
+    const [rep, insp] = current.action === 'replace' ? [current, incoming] : [incoming, current];
+    const check = intervalText(insp.intervalKm, insp.intervalMonths);
+    const note = joinNotes(rep.note, insp.note, `Проверка: ${check}.`);
+    return { ...base, action: 'replace', intervalKm: rep.intervalKm, intervalMonths: rep.intervalMonths, severeIntervalKm: rep.severeIntervalKm, severeIntervalMonths: rep.severeIntervalMonths, note };
+  }
+  return {
+    ...base,
+    intervalKm: stricter(current.intervalKm, incoming.intervalKm),
+    intervalMonths: stricter(current.intervalMonths, incoming.intervalMonths),
+    severeIntervalKm: stricter(current.severeIntervalKm, incoming.severeIntervalKm),
+    severeIntervalMonths: stricter(current.severeIntervalMonths, incoming.severeIntervalMonths),
+    note: joinNotes(current.note, incoming.note),
+  };
+}
+
+/** Notes put together without repeating a piece already there (a table uploaded again). */
+function joinNotes(first: string, ...more: string[]): string {
+  let out = first;
+  for (const piece of more) if (piece && !out.includes(piece)) out = out ? `${out} ${piece}` : piece;
   return out;
 }
 
@@ -442,9 +502,22 @@ export function describeChanges(a: ItemInput, b: ItemInput): string[] {
  * The new table against the current regulation. Matching is by name (normalised): a live item of
  * any origin with the same name is updated; a removed one is revived; the rest are created.
  * Previous-table items the new table lacks are removed; hand-made items are kept.
+ *
+ * Sources: `tableSource` is the owner's answer to «чья это таблица» for rows without a «Источник»
+ * cell. When every row has a source, the table replaces only items of those sources — the service's
+ * table leaves the manual's items be and back. The same work already there from the other source is
+ * merged (mergeSources): the more frequent interval wins.
  */
-export function planImport(parsed: readonly ParsedItem[], existing: readonly RegulationItem[], components: readonly Component[]): ImportPlan {
-  const plan: ImportPlan = { create: [], update: [], revive: [], unchanged: [], remove: [], keepManual: [], duplicates: [] };
+export function planImport(
+  parsed: readonly ParsedItem[],
+  existing: readonly RegulationItem[],
+  components: readonly Component[],
+  tableSource: RegulationSource | null = null,
+): ImportPlan {
+  const sourceOf = (p: ParsedItem) => p.source ?? tableSource;
+  const sources = new Set(parsed.map(sourceOf));
+  const scope = parsed.length && !sources.has(null) ? ([...sources] as RegulationSource[]) : null;
+  const plan: ImportPlan = { create: [], update: [], revive: [], unchanged: [], remove: [], keepManual: [], keepOther: [], scope, duplicates: [] };
   const live = new Map<string, RegulationItem>();
   const removed = new Map<string, RegulationItem>();
   for (const item of existing) {
@@ -462,23 +535,29 @@ export function planImport(parsed: readonly ParsedItem[], existing: readonly Reg
       continue;
     }
     seen.add(key);
+    const src = sourceOf(p);
     const current = live.get(key);
     if (current) {
-      const input = toItemInput(p, current, components);
+      let input = toItemInput(p, current, components, src);
+      // The same work from the other source's table: keep the more frequent.
+      const merged = !!(scope && src && current.origin === 'table' && current.source && current.source !== src);
+      if (merged) input = { ...mergeSources(current, input), name: current.name, componentId: current.componentId };
       const changes = describeChanges(current, input);
-      if (changes.length || current.origin !== 'table' || current.name !== input.name) plan.update.push({ existing: current, input, changes });
-      else plan.unchanged.push(current);
+      if (changes.length || current.origin !== 'table' || current.name !== input.name) {
+        plan.update.push({ existing: current, input, changes: merged ? ['совпал с пунктом другого источника — взят более частый интервал', ...changes] : changes, ...(merged ? { merged } : {}) });
+      } else plan.unchanged.push(current);
       continue;
     }
     const old = removed.get(key);
-    if (old) plan.revive.push({ existing: old, input: toItemInput(p, old, components) });
-    else plan.create.push(toItemInput(p, undefined, components));
+    if (old) plan.revive.push({ existing: old, input: toItemInput(p, old, components, src) });
+    else plan.create.push(toItemInput(p, undefined, components, src));
   }
 
   for (const [key, item] of live) {
     if (seen.has(key)) continue;
-    if (item.origin === 'table') plan.remove.push(item);
-    else plan.keepManual.push(item);
+    if (item.origin !== 'table') plan.keepManual.push(item);
+    else if (!scope || (item.source && scope.includes(item.source))) plan.remove.push(item);
+    else plan.keepOther.push(item);
   }
   return plan;
 }

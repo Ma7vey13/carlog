@@ -9,7 +9,7 @@ import { SEED_SETTINGS, SETTINGS_ID, VEHICLE_ID } from './seed';
 
 export type RegulationItemInput = Pick<
   RegulationItem,
-  'name' | 'componentId' | 'action' | 'performer' | 'intervalKm' | 'intervalMonths' | 'severeIntervalKm' | 'severeIntervalMonths' | 'keywords' | 'note'
+  'name' | 'componentId' | 'action' | 'performer' | 'intervalKm' | 'intervalMonths' | 'severeIntervalKm' | 'severeIntervalMonths' | 'keywords' | 'note' | 'source'
 >;
 
 export async function loadRegulationItems(db: CarlogDB): Promise<RegulationItem[]> {
@@ -20,14 +20,17 @@ export async function saveRegulationItem(db: CarlogDB, id: Id | null, input: Reg
   const deviceId = await getDeviceId(db);
   const now = nowIso();
   const prev = id ? await db.regulationItems.get(id) : undefined;
+  const { source, ...rest } = input;
   const item: RegulationItem = {
     id: prev?.id ?? newId(),
     createdAt: prev?.createdAt ?? now,
     updatedAt: now,
     deleted: false,
     deviceId,
-    ...input,
+    ...rest,
     origin: prev?.origin ?? 'manual',
+    // No source stated → no key at all (sync and backups stay as before).
+    ...(source ? { source } : {}),
   };
   await db.regulationItems.put(item);
   return item.id;

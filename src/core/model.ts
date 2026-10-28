@@ -140,7 +140,11 @@ export interface RegulationItem extends SyncFields {
   note: string;
   /** 'table' — from an uploaded regulation table (a new table replaces these); missing = added by hand. */
   origin?: 'table' | 'manual';
+  /** Whose schedule this is: the service's own ТО table or the car's manual; missing = not stated. */
+  source?: RegulationSource;
 }
+
+export type RegulationSource = 'service' | 'instruction';
 
 /**
  * One upload of a regulation table (stage 9): what it changed, so the last upload can be undone.

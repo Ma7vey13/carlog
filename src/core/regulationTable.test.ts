@@ -166,6 +166,7 @@ describe('plan of a new table', () => {
     keywords: [],
     componentName: null,
     note: '',
+    source: null,
     row: 1,
     ...patch,
   });
@@ -209,14 +210,81 @@ describe('plan of a new table', () => {
     const plan = planImport([parsed('Колодки', 30000, null, { componentName: 'Тормоза задние' })], [], COMPONENTS);
     expect(plan.create[0]!.componentId).toBe(startComponentId('Тормоза задние'));
   });
+
+  describe('sources: the service’s table and the manual', () => {
+    const svc = { source: 'service' as const };
+    const man = { source: 'instruction' as const };
+
+    it('a table of one source replaces only that source’s items', () => {
+      const existing = [
+        item('oil', 'Масло двигателя', svc),
+        item('belt', 'Ремень ГРМ', svc),
+        item('valves', 'Зазор клапанов', { ...man, action: 'inspect' }),
+        item('legacy', 'Старый пункт'),
+        item('mine', 'Мойка радиатора', { origin: 'manual' }),
+      ];
+      const plan = planImport([parsed('Масло двигателя', 15000, 12), parsed('Свечи зажигания', 60000, 48)], existing, COMPONENTS, 'service');
+      expect(plan.scope).toEqual(['service']);
+      expect(plan.remove.map((i) => i.id)).toEqual(['belt']);
+      expect(plan.keepOther.map((i) => i.id)).toEqual(['valves', 'legacy']);
+      expect(plan.keepManual.map((i) => i.id)).toEqual(['mine']);
+      expect(plan.create[0]).toMatchObject({ name: 'Свечи зажигания', source: 'service' });
+      expect(plan.update[0]!.input.source).toBe('service');
+    });
+
+    it('without a source the table replaces the whole regulation, as before', () => {
+      const existing = [item('oil', 'Масло двигателя', svc), item('valves', 'Зазор клапанов', man)];
+      const plan = planImport([parsed('Масло двигателя', 10000, 12)], existing, COMPONENTS);
+      expect(plan.scope).toBeNull();
+      expect(plan.remove.map((i) => i.id)).toEqual(['valves']);
+      // the item keeps its source
+      expect(plan.unchanged.map((i) => i.id)).toEqual(['oil']);
+    });
+
+    it('the «Источник» column wins over the screen’s choice; a table with both replaces both', () => {
+      const plan = planImport(
+        [parsed('Масло двигателя', 15000, 12, svc), parsed('Зазор клапанов', 96000, 48, { ...man, action: 'inspect' }), parsed('Салонный фильтр', 15000, 12)],
+        [item('x', 'Старый пункт', man)],
+        COMPONENTS,
+        'service',
+      );
+      expect(plan.scope?.sort()).toEqual(['instruction', 'service']);
+      expect(plan.create.map((c) => c.source)).toEqual(['service', 'instruction', 'service']);
+      expect(plan.remove.map((i) => i.id)).toEqual(['x']);
+    });
+
+    it('the same work from the other source: the more frequent interval wins (coolant from the manual)', () => {
+      const existing = [item('coolant', 'Охлаждающая жидкость', { ...svc, intervalKm: 45000, intervalMonths: 36, keywords: ['антифриз'] })];
+      const plan = planImport([parsed('Охлаждающая жидкость', 40000, 24, { keywords: ['охлаждающ жидкост'] })], existing, COMPONENTS, 'instruction');
+      expect(plan.update).toHaveLength(1);
+      const u = plan.update[0]!;
+      expect(u.merged).toBe(true);
+      expect(u.input).toMatchObject({ intervalKm: 40000, intervalMonths: 24, source: 'service', keywords: ['антифриз', 'охлаждающ жидкост'] });
+      expect(u.changes[0]).toContain('более частый');
+      expect(plan.remove).toEqual([]);
+    });
+
+    it('a replacement beats an inspection: the replacement’s interval, the check goes to the note; uploading again changes nothing', () => {
+      const existing = [item('atf', 'Масло в АКПП', { ...svc, intervalKm: 45000, intervalMonths: 36 })];
+      const table = [parsed('Масло в АКПП', 15000, 12, { action: 'inspect' })];
+      const plan = planImport(table, existing, COMPONENTS, 'instruction');
+      const input = plan.update[0]!.input;
+      expect(input).toMatchObject({ action: 'replace', intervalKm: 45000, intervalMonths: 36, source: 'service' });
+      expect(input.note.replace(/[  ]/g, ' ')).toBe('Проверка: 15 000 км / 12 мес.');
+      const again = planImport(table, [{ ...existing[0]!, ...input }], COMPONENTS, 'instruction');
+      expect(again.update).toEqual([]);
+      expect(again.unchanged.map((i) => i.id)).toEqual(['atf']);
+    });
+  });
 });
 
 describe('template and chat prompt', () => {
   it('the template and a chat answer in its format are read without any column setup', () => {
     const grid = parseDelimited(extractTableText(buildRegulationPrompt().split('Пример двух строк:\n')[1]!));
     const layout = detectLayout(grid);
-    expect(layout).toEqual({ kind: 'list', headerRow: 0, roles: ['name', 'km', 'months', 'severeKm', 'severeMonths', 'action', 'performer', 'keywords', 'component', 'note'] });
+    expect(layout).toEqual({ kind: 'list', headerRow: 0, roles: ['name', 'km', 'months', 'severeKm', 'severeMonths', 'action', 'performer', 'keywords', 'component', 'note', 'source'] });
     const { items } = parseTable(grid, layout);
+    expect(items.map((i) => i.source)).toEqual(['service', 'instruction']);
     expect(items[0]).toMatchObject({ name: 'Масло двигателя и масляный фильтр', intervalKm: 10000, intervalMonths: 12, severeIntervalKm: 7500, severeIntervalMonths: 6, action: 'replace', keywords: ['замена масла двигатель', 'масло моторное'], componentName: 'Смазка двигателя' });
     expect(items[1]).toMatchObject({ action: 'inspect', performer: 'service' });
     const fromTemplate = parseDelimited(regulationTemplateCsv().replace(/^\uFEFF/, ''));
