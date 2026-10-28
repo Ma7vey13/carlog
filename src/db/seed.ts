@@ -4,6 +4,7 @@
 
 import { START_COMPONENTS } from '../core/components';
 import { SEED_EXPECTED_PART_RULES } from '../core/expectedParts';
+import { SEED_SELF_CHECK_ITEMS } from '../core/selfCheck';
 import { SEED_TIMESTAMP, seedId } from '../core/ids';
 import type { Component, Settings, SyncFields, Vehicle } from '../core/model';
 import type { CarlogDB } from './db';
@@ -49,7 +50,7 @@ export const SEED_COMPONENTS: Component[] = START_COMPONENTS.map((c) => ({
  * (marked) component stays as the owner left it. Safe to run on every start.
  */
 export async function ensureSeed(db: CarlogDB): Promise<void> {
-  await db.transaction('rw', [db.vehicles, db.settings, db.components, db.expectedPartRules], async () => {
+  await db.transaction('rw', [db.vehicles, db.settings, db.components, db.expectedPartRules, db.selfCheckItems], async () => {
     if (!(await db.vehicles.get(VEHICLE_ID))) await db.vehicles.add(SEED_VEHICLE);
     if (!(await db.settings.get(SETTINGS_ID))) await db.settings.add(SEED_SETTINGS);
     const components = await db.components.bulkGet(SEED_COMPONENTS.map((c) => c.id));
@@ -59,5 +60,9 @@ export async function ensureSeed(db: CarlogDB): Promise<void> {
     const rules = await db.expectedPartRules.bulkGet(SEED_EXPECTED_PART_RULES.map((r) => r.id));
     const missingRules = SEED_EXPECTED_PART_RULES.filter((_, i) => !rules[i]);
     if (missingRules.length) await db.expectedPartRules.bulkAdd(missingRules);
+
+    const checks = await db.selfCheckItems.bulkGet(SEED_SELF_CHECK_ITEMS.map((i) => i.id));
+    const missingChecks = SEED_SELF_CHECK_ITEMS.filter((_, i) => !checks[i]);
+    if (missingChecks.length) await db.selfCheckItems.bulkAdd(missingChecks);
   });
 }
