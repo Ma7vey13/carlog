@@ -27,6 +27,7 @@ export async function saveRegulationItem(db: CarlogDB, id: Id | null, input: Reg
     deleted: false,
     deviceId,
     ...input,
+    origin: prev?.origin ?? 'manual',
   };
   await db.regulationItems.put(item);
   return item.id;

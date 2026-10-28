@@ -9,6 +9,7 @@ import type {
   MatchRule,
   MetaEntry,
   MileageEntry,
+  RegulationImport,
   RegulationItem,
   Scan,
   ScanBlob,
@@ -29,6 +30,7 @@ export const SYNCED_TABLES = [
   'lineItems',
   'components',
   'regulationItems',
+  'regulationImports',
   'manualEvents',
   'matchRules',
   'expectedPartRules',
@@ -50,6 +52,7 @@ export class CarlogDB extends Dexie {
   lineItems!: EntityTable<LineItem, 'id'>;
   components!: EntityTable<Component, 'id'>;
   regulationItems!: EntityTable<RegulationItem, 'id'>;
+  regulationImports!: EntityTable<RegulationImport, 'id'>;
   manualEvents!: EntityTable<ManualEvent, 'id'>;
   matchRules!: EntityTable<MatchRule, 'id'>;
   expectedPartRules!: EntityTable<ExpectedPartRule, 'id'>;
@@ -88,6 +91,8 @@ export class CarlogDB extends Dexie {
       scanBlobs: 'sha256',
       meta: 'key',
     });
+    // Stage 9: uploads of the regulation table.
+    this.version(2).stores({ regulationImports: 'id, updatedAt' });
   }
 }
 

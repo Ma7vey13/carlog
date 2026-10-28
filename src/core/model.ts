@@ -138,6 +138,24 @@ export interface RegulationItem extends SyncFields {
   severeIntervalMonths: number | null;
   keywords: string[];
   note: string;
+  /** 'table' — from an uploaded regulation table (a new table replaces these); missing = added by hand. */
+  origin?: 'table' | 'manual';
+}
+
+/**
+ * One upload of a regulation table (stage 9): what it changed, so the last upload can be undone.
+ * Synced like everything else, so it can be undone on another device too.
+ */
+export interface RegulationImport extends SyncFields {
+  fileName: string;
+  /** Items created by this upload (soft-deleted on undo). */
+  created: Id[];
+  /** Items as they were before the upload: updated, revived or removed ones. */
+  before: RegulationItem[];
+  /** History lines linked by this upload: [lineId, regulationItemId]. */
+  linked: Array<[Id, Id]>;
+  summary: { created: number; updated: number; revived: number; removed: number; linked: number };
+  undone: boolean;
 }
 
 export interface ManualEvent extends SyncFields {
