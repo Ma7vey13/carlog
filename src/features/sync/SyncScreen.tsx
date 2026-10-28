@@ -8,7 +8,7 @@ import { forgetKey, loadRememberedKey, resetSyncState } from '../../sync/state';
 import { ConfirmDialog } from '../../ui/Dialog';
 import { Checkbox } from '../../ui/Field';
 import { SetupWizard } from './SetupWizard';
-import { TokenDialog } from './SyncDialogs';
+import { ChangePasswordDialog, TokenDialog } from './SyncDialogs';
 import { SyncPanel, useSyncState } from './SyncPanel';
 
 /** `/more/sync` and `/more/sync/setup`. */
@@ -22,6 +22,7 @@ function SyncSettings() {
   const s = useSyncState();
   const remembered = useLiveQuery(async () => !!(await loadRememberedKey(getDb())), []);
   const [askToken, setAskToken] = useState(false);
+  const [changePassword, setChangePassword] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
 
   return (
@@ -46,6 +47,9 @@ function SyncSettings() {
             <button type="button" className="btn btn--secondary" onClick={() => setAskToken(true)}>
               Заменить токен
             </button>
+            <button type="button" className="btn btn--secondary" onClick={() => setChangePassword(true)}>
+              Сменить пароль
+            </button>
             {remembered && (
               <button
                 type="button"
@@ -64,6 +68,7 @@ function SyncSettings() {
           </div>
         </section>
       )}
+      <ChangePasswordDialog open={changePassword} onClose={() => setChangePassword(false)} />
       <TokenDialog open={askToken} onClose={() => setAskToken(false)} onSaved={() => setAskToken(false)} />
       <ConfirmDialog
         open={confirmReset}

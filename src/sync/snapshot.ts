@@ -37,12 +37,17 @@ export interface ApplyResult {
 
 /** Merges the snapshot into the local database in one transaction. Never deletes physically. */
 export async function applySnapshot(db: CarlogDB, snapshot: Snapshot): Promise<ApplyResult> {
+  return mergeTables(db, snapshot.tables);
+}
+
+/** Merges records by id (newer updatedAt wins) — for snapshots and backups alike. */
+export async function mergeTables(db: CarlogDB, source: Snapshot['tables']): Promise<ApplyResult> {
   let received = 0;
   let newerHere = 0;
   const tables = SYNCED_TABLES.map((n) => db.table(n));
   await db.transaction('rw', tables, async () => {
     for (const name of SYNCED_TABLES) {
-      const remote = (snapshot.tables[name] ?? []).filter((r): r is SyncFields => !!r && typeof r.id === 'string');
+      const remote = (source[name] ?? []).filter((r): r is SyncFields => !!r && typeof r.id === 'string');
       if (!remote.length) continue;
       const local = (await db.table(name).toArray()) as SyncFields[];
       const { toLocal, localWins } = mergeTable(local, remote);

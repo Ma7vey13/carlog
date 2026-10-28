@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
 import { hrefFor, type Route } from '../../app/routes';
 import { ComponentsScreen } from './ComponentsScreen';
 import { PartRulesScreen } from './PartRulesScreen';
+import { BackupScreen } from './BackupScreen';
 import { ScheduleSettingsScreen } from './ScheduleSettingsScreen';
+import { StorageScreen, useStorageInfo } from './StorageScreen';
 import { SyncPanel } from '../sync/SyncPanel';
 import { SyncScreen } from '../sync/SyncScreen';
 import { HelpScreen } from '../help/HelpScreen';
-import { getStorageInfo, requestPersistence, type StorageInfo } from '../../app/storage';
 import { THEME_LABELS, useTheme, type ThemeChoice } from '../../app/theme';
 import { formatBytes, formatLocalDate } from '../../core/format';
 
@@ -18,6 +18,8 @@ export function MoreScreen({ route }: { route: Route }) {
   if (route.rest[0] === 'schedule') return <ScheduleSettingsScreen />;
   if (route.rest[0] === 'sync') return <SyncScreen route={route} />;
   if (route.rest[0] === 'help') return <HelpScreen route={route} />;
+  if (route.rest[0] === 'backup') return <BackupScreen />;
+  if (route.rest[0] === 'storage') return <StorageScreen />;
   return (
     <div className="stack">
       <SyncPanel compact />
@@ -57,7 +59,7 @@ export function MoreScreen({ route }: { route: Route }) {
       <section className="card">
         <h2 className="card__title">Справка</h2>
         <a className="menu-link" href={hrefFor('/more/help')}>
-          <span>Инструкции: синхронизация, установка, GitHub</span>
+          <span>Руководство: установка, синхронизация, распознавание, копия</span>
           <span className="muted" aria-hidden="true">
             ›
           </span>
@@ -128,53 +130,24 @@ function ThemeSection() {
   );
 }
 
+/** Data safety: backup, storage, with the current usage at a glance. */
 function StorageSection() {
-  const [info, setInfo] = useState<StorageInfo | null>(null);
-
-  const refresh = useCallback(() => {
-    getStorageInfo().then(setInfo, () => setInfo(null));
-  }, []);
-  useEffect(refresh, [refresh]);
-
-  const askPersistence = async () => {
-    await requestPersistence();
-    refresh();
-  };
-
+  const [info] = useStorageInfo();
   return (
     <section className="card">
-      <h2 className="card__title">Хранилище на этом устройстве</h2>
-      {!info ? (
-        <p className="muted">Считаю…</p>
-      ) : !info.supported ? (
-        <p className="muted">Браузер не сообщает, сколько места занято.</p>
-      ) : (
-        <dl className="facts">
-          <div>
-            <dt>Занято</dt>
-            <dd data-testid="storage-usage">{info.usage === null ? '—' : formatBytes(info.usage)}</dd>
-          </div>
-          <div>
-            <dt>Доступно браузеру</dt>
-            <dd>{info.quota === null ? '—' : formatBytes(info.quota)}</dd>
-          </div>
-          <div>
-            <dt>Постоянное хранилище</dt>
-            <dd>{info.persisted ? 'включено' : 'не включено'}</dd>
-          </div>
-        </dl>
-      )}
-      {info?.supported && !info.persisted && (
-        <>
-          <p className="hint">
-            Без постоянного хранилища браузер может удалить данные, если на телефоне кончится место. Chrome обычно
-            включает его сам, когда приложение установлено на главный экран.
-          </p>
-          <button type="button" className="btn btn--secondary" onClick={askPersistence}>
-            Запросить у браузера
-          </button>
-        </>
-      )}
+      <h2 className="card__title">Сохранность данных</h2>
+      <a className="menu-link" href={hrefFor('/more/backup')}>
+        <span>Резервная копия: сохранить и восстановить</span>
+        <span className="muted" aria-hidden="true">
+          ›
+        </span>
+      </a>
+      <a className="menu-link" href={hrefFor('/more/storage')}>
+        <span>Хранилище</span>
+        <span className="muted">
+          <span data-testid="storage-usage">{info?.usage != null ? formatBytes(info.usage) : '—'}</span> ›
+        </span>
+      </a>
     </section>
   );
 }

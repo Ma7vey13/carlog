@@ -8,6 +8,7 @@ import { getDb } from '../db/db';
 import { getDeviceId } from '../db/device';
 import { downloadMissingScans, hasRemoteChanges, pull, push, SyncError, VaultChangedError, type SyncContext } from './engine';
 import { GitHub, GitHubError } from './github';
+import { adoptChangedPassword, changePasswordHere, keyFromOldPassword } from './password';
 import { decryptToken, loadRememberedKey, loadSyncState, rememberKey, saveSyncState } from './state';
 
 export type SyncErrorKind = 'locked' | 'auth' | 'vault' | 'network' | 'other';
@@ -154,4 +155,32 @@ export async function fetchScanOnDemand(sha256: string): Promise<boolean> {
 
 export async function setDownloadAllScans(on: boolean) {
   await saveSyncState(getDb(), { downloadAllScans: on });
+}
+
+/** "Сменить пароль" on this device: re-encrypts carlog-data and switches the session key. */
+export async function changePasswordInSession(currentPassword: string, newPassword: string, onProgress: (m: string) => void): Promise<number> {
+  const db = getDb();
+  const oldKey = await keyFromOldPassword(db, currentPassword); // WrongPasswordError if mistyped
+  set({ key: oldKey });
+  const ctx = await context();
+  ctx.onProgress = onProgress;
+  const r = await changePasswordHere(ctx, newPassword);
+  set({ key: r.key, error: null, remoteNewer: false });
+  return r.filesReencrypted;
+}
+
+/** The password was changed on another device: take the new one (and the old one if needed). */
+export async function adoptPasswordInSession(oldPassword: string | null, newPassword: string, remember: boolean): Promise<void> {
+  const db = getDb();
+  const oldKey = state.key ?? (await loadRememberedKey(db)) ?? (oldPassword ? await keyFromOldPassword(db, oldPassword) : null);
+  if (!oldKey) throw new SyncError('Введите и старый пароль: он нужен, чтобы открыть токен на этом устройстве');
+  const s = await loadSyncState(db);
+  const newKey = await adoptChangedPassword(db, oldKey, newPassword, (token) => new GitHub(s.config!.owner, s.config!.repo, token));
+  if (remember) await rememberKey(db, newKey);
+  set({ key: newKey, error: null });
+}
+
+/** True when this device can open the token without the old password. */
+export async function hasOldKey(): Promise<boolean> {
+  return !!state.key || !!(await loadRememberedKey(getDb()));
 }

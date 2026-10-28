@@ -4,7 +4,7 @@
 //   scans/<sha256>.enc  scan files, encrypted, one per content hash
 //   drafts/<id>.enc     recognition results written by the Claude Code CLI (stage 5)
 
-import { decryptBytes, decryptJson, encryptBytes, encryptJson, parseVault, verifyKey, type Vault } from '../core/crypto';
+import { createVault, decryptBytes, decryptJson, encryptBytes, encryptJson, KDF_ITERATIONS, parseVault, verifyKey, type Vault } from '../core/crypto';
 import { validateDraft } from '../core/draftSchema';
 import type { CarlogDB } from '../db/db';
 import { setDraftPayload } from '../db/drafts';
@@ -268,4 +268,69 @@ export async function hasRemoteChanges(db: CarlogDB, gh: GitHub): Promise<boolea
   if (!state.config) return false;
   const head = await gh.head(state.config.branch);
   return !!head && head !== state.knownHead;
+}
+
+// --- Сменить пароль ---------------------------------------------------------------------------
+
+export interface PasswordChangeResult {
+  vault: Vault;
+  key: CryptoKey;
+  commitSha: string;
+  filesReencrypted: number;
+}
+
+/**
+ * Re-encrypts every file in carlog-data with a key from the new password and writes the new
+ * vault.json — all in one commit (SPEC section 8). Retries if another device pushed meanwhile.
+ * Local sync marks are moved to the new blob shas, so nothing looks "new" afterwards.
+ */
+export async function changePassword(ctx: SyncContext, newPassword: string, iterations = KDF_ITERATIONS): Promise<PasswordChangeResult> {
+  for (let attempt = 1; attempt <= MAX_PUSH_ATTEMPTS; attempt++) {
+    const state = await loadSyncState(ctx.db);
+    const cfg = config(state);
+    ctx.onProgress?.('Проверяю данные на GitHub…');
+    const remote = await readRemote(ctx.gh, cfg.branch);
+    if (!remote.head || !remote.tree) throw new SyncError('Репозиторий данных не подготовлен');
+    await checkVault(ctx, state, remote);
+
+    const { vault, key } = await createVault(newPassword, nowOf(ctx), iterations);
+    const files = [...remote.files].filter(([path]) => path.endsWith('.enc'));
+    const renamed = new Map<string, string>(); // old blob sha → new blob sha
+    const entries: Array<{ path: string; sha: string }> = [];
+    for (const [i, [path, sha]] of files.entries()) {
+      ctx.onProgress?.(`Перешифровываю файлы: ${i + 1} из ${files.length}…`);
+      const plain = await decryptBytes(ctx.key, await ctx.gh.blob(sha));
+      const newSha = await ctx.gh.createBlob(await encryptBytes(key, plain));
+      renamed.set(sha, newSha);
+      entries.push({ path, sha: newSha });
+    }
+    const vaultSha = await ctx.gh.createBlob(new TextEncoder().encode(JSON.stringify(vault, null, 2) + '\n'));
+    entries.push({ path: VAULT_PATH, sha: vaultSha });
+
+    ctx.onProgress?.('Записываю новый пароль на GitHub…');
+    const tree = await ctx.gh.createTree(remote.tree, entries);
+    const commitSha = await ctx.gh.createCommit(`password: все файлы перешифрованы (${files.length})`, tree, [remote.head]);
+    try {
+      await ctx.gh.updateRef(cfg.branch, commitSha);
+    } catch (err) {
+      if (err instanceof GitHubError && err.kind === 'conflict' && attempt < MAX_PUSH_ATTEMPTS) continue;
+      if (err instanceof GitHubError && err.kind === 'conflict') {
+        throw new SyncError('Другое устройство отправляет данные одновременно. Пароль не изменён — попробуйте ещё раз через минуту.');
+      }
+      throw err;
+    }
+
+    const move = (mark: SyncState['lastPull']) => (mark ? { ...mark, snapshotSha: mark.snapshotSha ? (renamed.get(mark.snapshotSha) ?? mark.snapshotSha) : null } : null);
+    await saveSyncState(ctx.db, {
+      vault,
+      vaultSha,
+      lastPull: move(state.lastPull),
+      lastPush: move(state.lastPush),
+      knownHead: state.knownHead === remote.head ? commitSha : state.knownHead,
+      scanIndex: Object.fromEntries(Object.entries(state.scanIndex).map(([h, s]) => [h, renamed.get(s) ?? s])),
+      appliedDraftFiles: state.appliedDraftFiles.map((s) => renamed.get(s) ?? s),
+    });
+    return { vault, key, commitSha, filesReencrypted: files.length };
+  }
+  throw new SyncError('Не удалось сменить пароль');
 }
