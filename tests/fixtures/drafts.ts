@@ -204,10 +204,10 @@ export const ALL_PAGES = [PAGE1_WORK_ORDER, PAGE2_ACT, PAGE3_ACT, PAGE4_ACT, PAG
 
 /** Reference table of SPEC section 11 (works/parts: line count / rubles). */
 export const REFERENCE = [
-  { page: 1, date: '2025-10-30', km: 303700, works: [5, 14500], parts: [6, 78600], total: 93100 },
-  { page: 2, date: '2025-07-22', km: 298000, works: [1, 5600], parts: [5, 21700], total: 27300 },
-  { page: 3, date: '2025-04-11', km: 295000, works: [8, 7900], parts: [9, 23650], total: 31550 },
-  { page: 4, date: '2025-03-12', km: 293000, works: [3, 4700], parts: [4, 18500], total: 23200 },
-  { page: 5, date: '2021-10-06', km: 250000, works: [2, 62190], parts: [16, 63290], total: 125480 },
-  { page: 6, date: '2021-09-30', km: null, works: [0, 0], parts: [1, 148500], total: 148500 },
+  { page: 1, doc: 'Заказ-наряд №26999', type: 'work_order', number: '26999', order: null, date: '2025-10-30', km: 303700, works: [5, 14500], parts: [6, 78600], total: 93100 },
+  { page: 2, doc: 'Акт к з/н №26548 от 22.07.2025', type: 'act', number: '1', order: { number: '26548', date: '2025-07-22' }, date: '2025-07-22', km: 298000, works: [1, 5600], parts: [5, 21700], total: 27300 },
+  { page: 3, doc: 'Акт к з/н №26007 от 11.04.2025', type: 'act', number: '1', order: { number: '26007', date: '2025-04-11' }, date: '2025-04-11', km: 295000, works: [8, 7900], parts: [9, 23650], total: 31550 },
+  { page: 4, doc: 'Акт к з/н №25857 от 12.03.2025', type: 'act', number: '1', order: { number: '25857', date: '2025-03-12' }, date: '2025-03-12', km: 293000, works: [3, 4700], parts: [4, 18500], total: 23200 },
+  { page: 5, doc: 'Акт к з/н №19963 от 19.09.2021', type: 'act', number: '1', order: { number: '19963', date: '2021-09-19' }, date: '2021-10-06', km: 250000, works: [2, 62190], parts: [16, 63290], total: 125480 },
+  { page: 6, doc: 'Товарная накладная №20052', type: 'invoice', number: '20052', order: null, date: '2021-09-30', km: null, works: [0, 0], parts: [1, 148500], total: 148500 },
 ] as const;
