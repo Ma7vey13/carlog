@@ -6,7 +6,8 @@ import { getDb } from '../../db/db';
 import { getDeviceId } from '../../db/device';
 import { initRepository, pull, readRemoteVault, type SyncContext } from '../../sync/engine';
 import { GitHub, GitHubError, looksLikeToken, parseRepo } from '../../sync/github';
-import { defaultDataRepo, docsUrl, guessDeviceName } from '../../sync/links';
+import { defaultDataRepo, guessDeviceName } from '../../sync/links';
+import { helpHref } from '../help/guides';
 import { setSessionKey } from '../../sync/session';
 import { encryptToken, rememberKey, saveSyncState } from '../../sync/state';
 import { Checkbox, TextField } from '../../ui/Field';
@@ -137,7 +138,8 @@ export function SetupWizard() {
           <h2 className="card__title">1. Доступ к GitHub</h2>
           <p className="hint">
             Нужен приватный репозиторий для данных и токен доступа только к нему.{' '}
-            <a href={docsUrl('04-sync.md', 'шаг-1-создать-токен-github')} target="_blank" rel="noreferrer noopener">
+            {/* New tab: the wizard keeps what was already typed. */}
+            <a href={helpHref('sync', 'шаг-1-создать-токен-github')} target="_blank" rel="noopener">
               Пошаговая инструкция
             </a>
             .

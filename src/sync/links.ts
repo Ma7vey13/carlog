@@ -1,5 +1,5 @@
 // Where the app is published decides the default data repository and the docs links:
-// https://<owner>.github.io/carlog/ → <owner>/carlog-data, docs at github.com/<owner>/carlog.
+// https://<owner>.github.io/carlog/ → <owner>/carlog-data. Guides are built in (features/help).
 
 export function pagesOwner(): string | null {
   const host = globalThis.location?.hostname ?? '';
@@ -9,12 +9,6 @@ export function pagesOwner(): string | null {
 export function defaultDataRepo(): string {
   const owner = pagesOwner();
   return owner ? `${owner}/carlog-data` : '';
-}
-
-/** Owner guide on GitHub, e.g. docsUrl('04-sync.md', 'если-токен-истёк'). */
-export function docsUrl(file: string, anchor?: string): string {
-  const owner = pagesOwner() ?? 'Ma7vey13';
-  return `https://github.com/${owner}/carlog/blob/main/docs/${file}${anchor ? `#${anchor}` : ''}`;
 }
 
 export function guessDeviceName(): string {

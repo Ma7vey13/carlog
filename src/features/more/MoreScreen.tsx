@@ -4,6 +4,7 @@ import { ComponentsScreen } from './ComponentsScreen';
 import { PartRulesScreen } from './PartRulesScreen';
 import { SyncPanel } from '../sync/SyncPanel';
 import { SyncScreen } from '../sync/SyncScreen';
+import { HelpScreen } from '../help/HelpScreen';
 import { getStorageInfo, requestPersistence, type StorageInfo } from '../../app/storage';
 import { THEME_LABELS, useTheme, type ThemeChoice } from '../../app/theme';
 import { formatBytes, formatLocalDate } from '../../core/format';
@@ -14,6 +15,7 @@ export function MoreScreen({ route }: { route: Route }) {
   if (route.rest[0] === 'components') return <ComponentsScreen />;
   if (route.rest[0] === 'part-rules') return <PartRulesScreen />;
   if (route.rest[0] === 'sync') return <SyncScreen route={route} />;
+  if (route.rest[0] === 'help') return <HelpScreen route={route} />;
   return (
     <div className="stack">
       <SyncPanel compact />
@@ -27,6 +29,15 @@ export function MoreScreen({ route }: { route: Route }) {
         </a>
         <a className="menu-link" href={hrefFor('/more/part-rules')}>
           <span>Правила «работа → запчасть»</span>
+          <span className="muted" aria-hidden="true">
+            ›
+          </span>
+        </a>
+      </section>
+      <section className="card">
+        <h2 className="card__title">Справка</h2>
+        <a className="menu-link" href={hrefFor('/more/help')}>
+          <span>Инструкции: синхронизация, установка, GitHub</span>
           <span className="muted" aria-hidden="true">
             ›
           </span>

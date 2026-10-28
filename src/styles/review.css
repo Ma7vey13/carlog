@@ -439,3 +439,129 @@
 .big-warning .notice__title {
   font-size: 17px;
 }
+
+/* Help: owner guides rendered from docs/ */
+.guide {
+  gap: 10px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.guide p,
+.guide ol,
+.guide ul {
+  margin: 0;
+}
+
+.guide ol,
+.guide ul {
+  display: grid;
+  gap: 6px;
+  padding-left: 22px;
+}
+
+.guide li > ol,
+.guide li > ul {
+  margin-top: 6px;
+}
+
+.guide__h {
+  margin: 10px 0 0;
+  scroll-margin-top: 72px;
+}
+
+.guide__h:focus {
+  outline: none;
+}
+
+.guide__h1 {
+  margin-top: 0;
+  font-size: 19px;
+}
+
+.guide__h2 {
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 17px;
+}
+
+.guide__h3 {
+  font-size: 15px;
+}
+
+.guide code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  font-size: 0.92em;
+}
+
+.guide__table {
+  overflow-x: auto;
+}
+
+.guide table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.guide th,
+.guide td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.guide th {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* Tables keep words and file names whole; a too-wide table scrolls inside its frame. */
+.guide table {
+  overflow-wrap: normal;
+}
+
+.guide td code {
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .guide thead {
+    display: none;
+  }
+
+  .guide table,
+  .guide tbody,
+  .guide tr,
+  .guide td {
+    display: block;
+  }
+
+  .guide tr {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .guide td {
+    display: grid;
+    grid-template-columns: 7.5em 1fr;
+    gap: 8px;
+    padding: 3px 0;
+    border: 0;
+  }
+
+  .guide td::before {
+    content: attr(data-label);
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+}
+
+@media (max-width: 600px) {
+  .guide td > code {
+    justify-self: start;
+  }
+}

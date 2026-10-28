@@ -4,7 +4,7 @@ import { hrefFor } from '../../app/routes';
 import { formatLocalDateTime } from '../../core/format';
 import { getDb } from '../../db/db';
 import { getDeviceId } from '../../db/device';
-import { docsUrl } from '../../sync/links';
+import { helpHref } from '../help/guides';
 import { clearSyncMessages, runSync, useSession } from '../../sync/session';
 import { countUnsent } from '../../sync/snapshot';
 import { loadSyncState, type SyncState } from '../../sync/state';
@@ -40,6 +40,12 @@ export function SyncPanel({ compact = false }: { compact?: boolean }) {
         <p className="hint">Сейчас данные есть только на этом устройстве. Настройте синхронизацию, чтобы видеть их и на телефоне, и на компьютере.</p>
         <a className="btn btn--primary" style={{ justifySelf: 'start' }} href={hrefFor('/more/sync/setup')}>
           Настроить синхронизацию
+        </a>
+        <a className="menu-link" href={helpHref('sync')}>
+          <span>Инструкция по синхронизации</span>
+          <span className="muted" aria-hidden="true">
+            ›
+          </span>
         </a>
       </section>
     );
@@ -106,7 +112,7 @@ export function SyncPanel({ compact = false }: { compact?: boolean }) {
                 <button type="button" className="btn btn--secondary" onClick={() => setAskToken(true)}>
                   Ввести новый токен
                 </button>
-                <a className="btn btn--ghost" href={docsUrl('04-sync.md', 'если-токен-истёк')} target="_blank" rel="noreferrer noopener">
+                <a className="btn btn--ghost" href={helpHref('sync', 'если-токен-истёк')}>
                   Как получить новый токен
                 </a>
               </div>
@@ -135,6 +141,12 @@ export function SyncPanel({ compact = false }: { compact?: boolean }) {
           </span>
         </a>
       )}
+      <a className="menu-link" href={helpHref('sync')}>
+        <span>Инструкция по синхронизации</span>
+        <span className="muted" aria-hidden="true">
+          ›
+        </span>
+      </a>
 
       <PasswordDialog
         open={askPassword !== null}

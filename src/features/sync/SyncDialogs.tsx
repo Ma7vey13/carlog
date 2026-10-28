@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { WrongPasswordError } from '../../core/crypto';
 import { getDb } from '../../db/db';
 import { looksLikeToken } from '../../sync/github';
-import { docsUrl } from '../../sync/links';
+import { helpHref } from '../help/guides';
 import { sessionKey, unlock } from '../../sync/session';
 import { encryptToken, saveSyncState } from '../../sync/state';
 import { Dialog } from '../../ui/Dialog';
@@ -94,7 +94,7 @@ export function TokenDialog({ open, onClose, onSaved }: { open: boolean; onClose
     >
       <p className="hint">
         Как получить новый токен — в{' '}
-        <a href={docsUrl('04-sync.md', 'шаг-1-создать-токен-github')} target="_blank" rel="noreferrer noopener">
+        <a href={helpHref('sync', 'шаг-1-создать-токен-github')} target="_blank" rel="noopener">
           инструкции
         </a>
         . Токен хранится на этом устройстве в зашифрованном виде.
