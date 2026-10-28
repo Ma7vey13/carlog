@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { daysBetween, fromIsoDate, isIsoDate, toIsoDate, todayIso } from './dates';
+import { addDays, addMonths, daysBetween, fromIsoDate, isIsoDate, toIsoDate, todayIso } from './dates';
 
 describe('dates', () => {
   it('uses local calendar date, not UTC', () => {
@@ -28,5 +28,19 @@ describe('dates', () => {
   it('parses ISO dates as local midnight', () => {
     const d = fromIsoDate('2025-03-12');
     expect([d.getFullYear(), d.getMonth(), d.getDate(), d.getHours()]).toEqual([2025, 2, 12, 0]);
+  });
+});
+
+describe('addMonths / addDays', () => {
+  it('adds months and clamps to the end of the month', () => {
+    expect(addMonths('2025-10-30', 12)).toBe('2026-10-30');
+    expect(addMonths('2025-01-31', 1)).toBe('2025-02-28');
+    expect(addMonths('2024-01-31', 1)).toBe('2024-02-29');
+    expect(addMonths('2025-11-15', 3)).toBe('2026-02-15');
+    expect(addMonths('2025-03-31', -1)).toBe('2025-02-28');
+  });
+  it('adds days across months and years', () => {
+    expect(addDays('2025-12-30', 3)).toBe('2026-01-02');
+    expect(addDays('2026-03-01', -1)).toBe('2026-02-28');
   });
 });

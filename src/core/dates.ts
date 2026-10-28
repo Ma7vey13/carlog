@@ -41,6 +41,26 @@ function utcDay(iso: IsoDate): number {
   return Date.UTC(y, m - 1, d);
 }
 
+/**
+ * Adds calendar months, clamping to the month's last day: 2025-01-31 + 1 → 2025-02-28.
+ * Used for "every 12 months" schedules.
+ */
+export function addMonths(iso: IsoDate, months: number): IsoDate {
+  const [y, m, d] = iso.split('-').map(Number) as [number, number, number];
+  const total = y * 12 + (m - 1) + months;
+  const ny = Math.floor(total / 12);
+  const nm = total - ny * 12; // 0-based
+  const lastDay = new Date(ny, nm + 1, 0).getDate();
+  return toIsoDate(new Date(ny, nm, Math.min(d, lastDay)));
+}
+
+/** Adds whole days. */
+export function addDays(iso: IsoDate, days: number): IsoDate {
+  const d = fromIsoDate(iso);
+  d.setDate(d.getDate() + days);
+  return toIsoDate(d);
+}
+
 /** Current timestamp for `createdAt` / `updatedAt`. */
 export function nowIso(now: Date = new Date()): string {
   return now.toISOString();
