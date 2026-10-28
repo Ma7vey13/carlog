@@ -119,10 +119,10 @@ describe('service-book grid', () => {
   });
 
   it('understands "тыс. км" headers', () => {
-    const g = parseDelimited('Работа;15;30;45\nтыс. км;;;\nМасло;З;З;З');
-    const layout = detectLayout(parseDelimited('Работа, тыс. км;15;30;45\nМасло;З;З;З'));
+    const grid = parseDelimited('Работа, тыс. км;15;30;45\nМасло;З;З;З');
+    const layout = detectLayout(grid);
     expect(layout.kind).toBe('matrix');
-    expect(parseTable(parseDelimited('Работа, тыс. км;15;30;45\nМасло;З;З;З'), layout).items[0]!.intervalKm).toBe(15000);
+    expect(parseTable(grid, layout).items[0]!.intervalKm).toBe(15000);
   });
 });
 

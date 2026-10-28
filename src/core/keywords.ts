@@ -53,6 +53,6 @@ export function matchingLines(bundles: readonly VisitBundle[], keywords: readonl
  * History lines that match an item's keywords but are not linked to it yet — for
  * "Найдено N строк в истории — привязать?" after the owner adds or edits an item.
  */
-export function unlinkedMatchingLines(bundles: readonly VisitBundle[], item: RegulationItem): LineRef[] {
+export function unlinkedMatchingLines(bundles: readonly VisitBundle[], item: Pick<RegulationItem, 'id' | 'keywords'>): LineRef[] {
   return matchingLines(bundles, item.keywords, item.id);
 }

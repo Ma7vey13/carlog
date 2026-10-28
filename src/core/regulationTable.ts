@@ -477,3 +477,12 @@ export function planImport(parsed: readonly ParsedItem[], existing: readonly Reg
   }
   return plan;
 }
+
+/** Items whose history links should be (re)computed: new, revived, or with new keywords. */
+export function itemsToLink(plan: ImportPlan, createdIds: readonly Id[]): Array<Pick<RegulationItem, 'id' | 'keywords'>> {
+  return [
+    ...plan.create.map((c, i) => ({ id: createdIds[i]!, keywords: c.keywords })),
+    ...plan.revive.map((r) => ({ id: r.existing.id, keywords: r.input.keywords })),
+    ...plan.update.filter((u) => u.existing.keywords.join('|') !== u.input.keywords.join('|')).map((u) => ({ id: u.existing.id, keywords: u.input.keywords })),
+  ];
+}
