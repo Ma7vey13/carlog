@@ -137,11 +137,12 @@ export function parseIntervalText(text: string): { km: number | null; months: nu
 
 /** «З» / R → replace, «П» / I → inspect, ✓ / + / • → a mark of unknown kind. */
 export function markOf(cell: string): RegulationAction | 'mark' | null {
-  const t = cell.trim().toLowerCase();
+  // A short mark ("З", "П*", "R") or a whole word — not a sentence that starts with "Проверка…".
+  const t = cell.trim().toLowerCase().replace(/[*.\s]+$/, '');
   if (!t || t === '-' || t === '—') return null;
-  if (/^(з|r|z|зам|замен)/.test(t)) return 'replace';
-  if (/^(п|i|к|о|р|провер|осмотр|контрол|регул|диагност)/.test(t)) return 'inspect';
-  if (/^[✓✔+•●*xх]$|^v$|^да$/.test(t)) return 'mark';
+  if (/^(з|r|z|зам|замен|замена|заменить)$/.test(t)) return 'replace';
+  if (/^(п|i|к|о|р|провер|проверка|проверить|осмотр|осмотреть|контроль|регулировка|диагностика)$/.test(t)) return 'inspect';
+  if (/^[✓✔+•●xх]$|^v$|^да$/.test(t)) return 'mark';
   return null;
 }
 
@@ -192,6 +193,9 @@ export function detectLayout(grid: Grid): TableLayout {
   for (let r = 0; r < Math.min(grid.length, 6); r++) {
     const heads = grid[r]!.map((c, col) => ({ col, h: gridHeader(c, thousands) })).filter((x) => x.h && (x.h.km || x.h.months));
     if (heads.length < 3) continue;
+    // A service-book header grows left to right (15 000, 30 000, 45 000…); a data row with numbers does not.
+    const kms = heads.map((x) => x.h!.km ?? x.h!.months ?? 0);
+    if (!kms.every((v, i) => i === 0 || v > kms[i - 1]!)) continue;
     const body = grid.slice(r + 1);
     const marks = body.reduce((n, row) => n + heads.filter((x) => markOf(row[x.col] ?? '')).length, 0);
     if (marks < 2) continue;

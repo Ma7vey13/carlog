@@ -238,3 +238,30 @@ describe('unused columns', () => {
     expect(parseTable(grid, { ...layout, roles: ['name', 'km'] }).items.map((i) => i.intervalKm)).toEqual([10000, 40000]);
   });
 });
+
+describe('a list full of numbers and notes is not a grid', () => {
+  it('rows with several mileages and notes starting with «Проверка…» stay a list', () => {
+    const grid = parseDelimited(
+      [
+        'Название;Каждые, км;Каждые, мес;Тяжёлые, км;Тяжёлые, мес;Замена / проверка;Кто делает;Ключевые слова;Узел;Заметка',
+        'Масло двигателя;15000;12;7500;6;Замена;Сервис;замена масла двигатель;Смазка двигателя;Вместе с фильтром.',
+        'Топливный фильтр;60000;48;;;Замена;Сервис;топливный фильтр;Топливная система;',
+        'Ремень ГРМ;120000;60;80000;30;Замена;Сервис;ремень грм;ГРМ и приводные ремни;Проверка каждые 60 000 км (в тяжёлых условиях — 40 000 км).',
+        'Воздушный фильтр;45000;36;;;Замена;Сервис;воздушный фильтр;;Проверка каждые 15 000 км / 12 мес.',
+        'Масло в АКПП;15000;12;;;Проверка;Сервис;масла акпп;АКПП;Замена каждые 40 000 км в тяжёлых условиях.',
+      ].join('\n'),
+    );
+    const layout = detectLayout(grid);
+    expect(layout.kind).toBe('list');
+    const { items } = parseTable(grid, layout);
+    expect(items.map((i) => [i.name, i.action, i.intervalKm, i.intervalMonths])).toEqual([
+      ['Масло двигателя', 'replace', 15000, 12],
+      ['Топливный фильтр', 'replace', 60000, 48],
+      ['Ремень ГРМ', 'replace', 120000, 60],
+      ['Воздушный фильтр', 'replace', 45000, 36],
+      ['Масло в АКПП', 'inspect', 15000, 12],
+    ]);
+    expect(markOf('Проверка каждые 60 000 км')).toBeNull();
+    expect(markOf('З*')).toBe('replace');
+  });
+});
