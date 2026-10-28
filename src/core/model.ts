@@ -147,6 +147,8 @@ export interface RegulationItem extends SyncFields {
  * Synced like everything else, so it can be undone on another device too.
  */
 export interface RegulationImport extends SyncFields {
+  /** 1, 2, 3… — "the last upload" does not depend on clocks. */
+  seq: number;
   fileName: string;
   /** Items created by this upload (soft-deleted on undo). */
   created: Id[];

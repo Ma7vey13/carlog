@@ -1,3 +1,4 @@
+import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useState } from 'react';
 import { usePageHeader } from '../../app/pageHeader';
 import { hrefFor, type Route } from '../../app/routes';
@@ -6,22 +7,25 @@ import { matchingLines } from '../../core/keywords';
 import { PERFORMER_LABELS, REGULATION_ACTION_LABELS, SCHEDULE_STATUS_LABELS } from '../../core/labels';
 import type { Id, Performer, RegulationAction, RegulationItem } from '../../core/model';
 import { itemIntervalText } from '../../core/scheduleText';
-import { formatDate, plural } from '../../core/format';
+import { formatDate, formatLocalDateTime, plural } from '../../core/format';
 import { parseKm } from '../../core/visitForm';
 import { getDb } from '../../db/db';
 import { componentTree, useComponents } from '../../db/hooks';
 import { deleteRegulationItem, saveRegulationItem, type RegulationItemInput } from '../../db/regulation';
+import { lastRegulationImport, undoRegulationImport } from '../../db/regulationImport';
 import { ConfirmDialog } from '../../ui/Dialog';
 import { EmptyState } from '../../ui/EmptyState';
 import { SelectField, TextAreaField, TextField } from '../../ui/Field';
 import { PlusIcon, RegulationIcon } from '../../ui/icons';
 import { ItemCard } from '../state/ItemCard';
 import { useSchedule } from '../state/useSchedule';
+import { RegulationImportScreen } from './RegulationImportScreen';
 
-/** Регламент tab: list, `/regulation/new`, `/regulation/<id>` (card), `/regulation/<id>/edit`. */
+/** Регламент tab: list, `/regulation/new`, `/regulation/import`, `/regulation/<id>` (card), `/regulation/<id>/edit`. */
 export function RegulationScreen({ route }: { route: Route }) {
   const [first, second] = route.rest;
   if (first === 'new') return <RegulationEditor id={null} />;
+  if (first === 'import') return <RegulationImportScreen />;
   if (first && second === 'edit') return <RegulationEditor id={first} />;
   if (first) return <ItemCard id={first} backHref={hrefFor('/regulation')} />;
   return <RegulationList />;
@@ -32,24 +36,33 @@ function RegulationList() {
   if (!data) return <p className="muted">Загрузка…</p>;
 
   const add = (
-    <a className="btn btn--primary" href={hrefFor('/regulation/new')} style={{ justifySelf: 'start' }}>
-      <PlusIcon /> Добавить пункт
-    </a>
+    <div className="btn-row">
+      <a className="btn btn--primary" href={hrefFor('/regulation/import')}>
+        Загрузить таблицу
+      </a>
+      <a className="btn btn--secondary" href={hrefFor('/regulation/new')}>
+        <PlusIcon /> Добавить пункт
+      </a>
+    </div>
   );
 
   if (data.regulation.length === 0) {
     return (
       <EmptyState icon={<RegulationIcon />} title="Регламент пуст">
-        <p>Пункты ТО с интервалами по пробегу и времени: что менять и когда. Сроки считаются от последнего раза в истории.</p>
+        <p>Пункты ТО с интервалами по пробегу и времени: что менять и когда. Загрузите таблицу регламента (Excel, CSV или фото через чат-ИИ) или добавьте пункты вручную.</p>
         {add}
+        <LastImportCard />
       </EmptyState>
     );
   }
 
   const byId = new Map(data.items.map((s) => [s.item.id, s]));
+  // "вручную" matters only next to items from a table.
+  const hasTable = data.regulation.some((i) => i.origin === 'table');
   return (
     <div className="stack">
       {add}
+      <LastImportCard />
       <ul className="card sched-list" data-testid="regulation-list">
         {data.regulation.map((item) => {
           const s = byId.get(item.id);
@@ -59,7 +72,10 @@ function RegulationList() {
               <a className="sched-row__link" href={hrefFor(`/regulation/${item.id}`)}>
                 <span className="sched-dot" aria-hidden="true" />
                 <span className="sched-row__body">
-                  <span className="sched-row__name">{item.name}</span>
+                  <span className="sched-row__name">
+                    {item.name}
+                    {hasTable && item.origin !== 'table' && <span className="tag">вручную</span>}
+                  </span>
                   <span className="sched-row__due">
                     <span className="visually-hidden">{SCHEDULE_STATUS_LABELS[status]}: </span>
                     {itemIntervalText(item)}
@@ -74,6 +90,43 @@ function RegulationList() {
         })}
       </ul>
     </div>
+  );
+}
+
+/** The last upload, with "Отменить эту загрузку". */
+function LastImportCard() {
+  const last = useLiveQuery(() => lastRegulationImport(getDb()), []);
+  const [confirm, setConfirm] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (!last) return null;
+  const s = last.summary;
+  return (
+    <section className="notice notice--info stack-sm" data-testid="last-import">
+      <p>
+        Загружено «{last.fileName}» {formatLocalDateTime(last.createdAt)}: добавлено {s.created}, изменено {s.updated}
+        {s.revived ? `, вернулось ${s.revived}` : ''}, убрано {s.removed}, привязано строк истории {s.linked}.
+      </p>
+      <button type="button" className="link-btn" style={{ justifySelf: 'start' }} onClick={() => setConfirm(true)}>
+        Отменить эту загрузку
+      </button>
+      {error && <p className="inline-error">{error}</p>}
+      <ConfirmDialog
+        open={confirm}
+        title="Отменить загрузку таблицы?"
+        confirmLabel="Отменить загрузку"
+        danger
+        onConfirm={() => {
+          setConfirm(false);
+          undoRegulationImport(getDb(), last.id).catch((e: unknown) => setError(e instanceof Error ? e.message : 'Не удалось отменить'));
+        }}
+        onCancel={() => setConfirm(false)}
+      >
+        <p>
+          Регламент вернётся к тому, что было до загрузки «{last.fileName}»: изменённые и убранные пункты восстановятся, добавленные уберутся,
+          привязки к истории, сделанные загрузкой, снимутся. Правки этих пунктов после загрузки тоже откатятся.
+        </p>
+      </ConfirmDialog>
+    </section>
   );
 }
 
@@ -200,6 +253,11 @@ function EditorForm({ existing, bundles }: { existing: RegulationItem | undefine
       }}
     >
       <section className="card">
+        {existing?.origin === 'table' && (
+          <p className="hint" data-testid="from-table">
+            Пункт из таблицы регламента: следующая загруженная таблица заменит его интервалы. Ключевые слова сохранятся, если в таблице их нет.
+          </p>
+        )}
         <TextField label="Название" value={f.name} error={errors.name} placeholder="Масло двигателя" onChange={(e) => set({ name: e.target.value })} />
         <SelectField label="Узел" value={f.componentId} onChange={(e) => set({ componentId: e.target.value })}>
           <option value="">— не выбран —</option>

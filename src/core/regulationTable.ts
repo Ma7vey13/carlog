@@ -271,7 +271,8 @@ function parseList(grid: Grid, layout: ListLayout): ParseResult {
     const row = grid[r]!;
     const get = (role: ColumnRole) => row[layout.roles.indexOf(role)] ?? '';
     const name = get('name');
-    const others = row.filter((c, i) => c && layout.roles[i] !== 'name' && layout.roles[i] !== 'skip');
+    // Any other filled cell, even in an unused column: only a row with the name alone is a section title.
+    const others = row.filter((c, i) => c && layout.roles[i] !== 'name');
     if (!name) {
       if (row.some(Boolean)) skipped.push({ row: r + 1, text: row.filter(Boolean).join(' · '), reason: 'нет названия' });
       continue;

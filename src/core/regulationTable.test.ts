@@ -12,7 +12,8 @@ import {
   planImport,
   type ParsedItem,
 } from './regulationTable';
-import { parseDelimited } from './table';
+import { buildRegulationPrompt, regulationTemplateCsv } from './regulationPrompt';
+import { extractTableText, parseDelimited } from './table';
 
 const COMPONENTS: Component[] = START_COMPONENTS.map((c) => ({ ...c, parentId: null, createdAt: '', updatedAt: '', deleted: false, deviceId: 'seed' }));
 
@@ -207,5 +208,33 @@ describe('plan of a new table', () => {
   it('maps the section or component column to a component', () => {
     const plan = planImport([parsed('Колодки', 30000, null, { componentName: 'Тормоза задние' })], [], COMPONENTS);
     expect(plan.create[0]!.componentId).toBe(startComponentId('Тормоза задние'));
+  });
+});
+
+describe('template and chat prompt', () => {
+  it('the template and a chat answer in its format are read without any column setup', () => {
+    const grid = parseDelimited(extractTableText(buildRegulationPrompt().split('Пример двух строк:\n')[1]!));
+    const layout = detectLayout(grid);
+    expect(layout).toEqual({ kind: 'list', headerRow: 0, roles: ['name', 'km', 'months', 'severeKm', 'severeMonths', 'action', 'performer', 'keywords', 'component', 'note'] });
+    const { items } = parseTable(grid, layout);
+    expect(items[0]).toMatchObject({ name: 'Масло двигателя и масляный фильтр', intervalKm: 10000, intervalMonths: 12, severeIntervalKm: 7500, severeIntervalMonths: 6, action: 'replace', keywords: ['замена масла двигатель', 'масло моторное'], componentName: 'Смазка двигателя' });
+    expect(items[1]).toMatchObject({ action: 'inspect', performer: 'service' });
+    const fromTemplate = parseDelimited(regulationTemplateCsv().replace(/^\uFEFF/, ''));
+    expect(parseTable(fromTemplate, detectLayout(fromTemplate)).items).toHaveLength(2);
+    expect(planImport(items, [], COMPONENTS).create[0]!.componentId).toBe(startComponentId('Смазка двигателя'));
+  });
+});
+
+describe('unused columns', () => {
+  it('a row with a value in an unused column is still an item, not a section title', () => {
+    const grid = parseDelimited('Работа;Через сколько\nМасло двигателя;10000\nАнтифриз;40000');
+    const layout = detectLayout(grid);
+    expect(layout).toMatchObject({ kind: 'list', roles: ['name', 'skip'] });
+    expect(parseTable(grid, layout).items.map((i) => [i.name, i.intervalKm])).toEqual([
+      ['Масло двигателя', null],
+      ['Антифриз', null],
+    ]);
+    if (layout.kind !== 'list') throw new Error();
+    expect(parseTable(grid, { ...layout, roles: ['name', 'km'] }).items.map((i) => i.intervalKm)).toEqual([10000, 40000]);
   });
 });

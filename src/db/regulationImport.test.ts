@@ -135,3 +135,27 @@ describe('regulation table upload', () => {
     await fresh.delete();
   });
 });
+
+describe('the last upload', () => {
+  it('is the newest by order, even with the same clock time', async () => {
+    const realNow = Date.now;
+    Date.now = () => Date.parse('2026-10-28T12:00:00.000Z');
+    const RealDate = Date;
+    // nowIso() uses new Date(): pin it too
+    globalThis.Date = class extends RealDate {
+      constructor(...args: ConstructorParameters<typeof Date>) {
+        super(...(args.length ? args : [Date.now()]) as []);
+      }
+    } as DateConstructor;
+    try {
+      await applyRegulationImport(db, await plan(RIGHT), 'right.csv');
+      const wrong = await applyRegulationImport(db, await plan(WRONG), 'wrong.csv');
+      expect((await lastRegulationImport(db))?.id).toBe(wrong.id);
+      await undoRegulationImport(db, wrong.id);
+      expect((await loadRegulationItems(db)).map((i) => i.name)).toEqual(['Антифриз', 'Масло двигателя', 'Свечи зажигания']);
+    } finally {
+      globalThis.Date = RealDate;
+      Date.now = realNow;
+    }
+  });
+});

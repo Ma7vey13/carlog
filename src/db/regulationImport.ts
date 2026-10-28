@@ -26,8 +26,10 @@ export async function applyRegulationImport(db: CarlogDB, plan: ImportPlan, file
   const createdIds = plan.create.map(() => newId());
   const links = plannedLinks(bundles, plan, createdIds);
 
+  const seq = Math.max(0, ...(await db.regulationImports.toArray()).map((r) => r.seq ?? 0)) + 1;
   const record: RegulationImport = {
     id: newId(),
+    seq,
     createdAt: now,
     updatedAt: now,
     deleted: false,
@@ -66,7 +68,7 @@ export async function applyRegulationImport(db: CarlogDB, plan: ImportPlan, file
 
 /** The newest upload, if it can still be undone. */
 export async function lastRegulationImport(db: CarlogDB): Promise<RegulationImport | null> {
-  const all = (await db.regulationImports.toArray()).filter((r) => !r.deleted).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const all = (await db.regulationImports.toArray()).filter((r) => !r.deleted).sort((a, b) => (b.seq ?? 0) - (a.seq ?? 0) || b.createdAt.localeCompare(a.createdAt));
   const last = all[0];
   return last && !last.undone ? last : null;
 }

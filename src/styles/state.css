@@ -308,3 +308,26 @@
   margin-left: auto;
   font-size: 14px;
 }
+
+/* Regulation table upload: column roles */
+.import-roles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.import-role {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.import-role__head {
+  font-size: 13px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.import-role .input {
+  width: 100%;
+}
