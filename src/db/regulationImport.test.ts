@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ALL_PAGES } from '../../tests/fixtures/drafts';
 import { draftToForm } from '../core/draftToForm';
 import { mileagePoints } from '../core/mileage';
@@ -138,24 +138,17 @@ describe('regulation table upload', () => {
 
 describe('the last upload', () => {
   it('is the newest by order, even with the same clock time', async () => {
-    const realNow = Date.now;
-    Date.now = () => Date.parse('2026-10-28T12:00:00.000Z');
-    const RealDate = Date;
-    // nowIso() uses new Date(): pin it too
-    globalThis.Date = class extends RealDate {
-      constructor(...args: ConstructorParameters<typeof Date>) {
-        super(...(args.length ? args : [Date.now()]) as []);
-      }
-    } as DateConstructor;
+    // Only Date is frozen: IndexedDB still needs real timers.
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-10-28T12:00:00.000Z') });
     try {
+      expect(new Date().toISOString()).toBe('2026-10-28T12:00:00.000Z');
       await applyRegulationImport(db, await plan(RIGHT), 'right.csv');
       const wrong = await applyRegulationImport(db, await plan(WRONG), 'wrong.csv');
       expect((await lastRegulationImport(db))?.id).toBe(wrong.id);
       await undoRegulationImport(db, wrong.id);
       expect((await loadRegulationItems(db)).map((i) => i.name)).toEqual(['Антифриз', 'Масло двигателя', 'Свечи зажигания']);
     } finally {
-      globalThis.Date = RealDate;
-      Date.now = realNow;
+      vi.useRealTimers();
     }
   });
 });

@@ -21,7 +21,7 @@ export interface Guide {
 /** In the order the owner needs them day to day. */
 export const GUIDES: readonly Guide[] = [
   { slug: 'guide', file: '00-guide.md', title: 'Руководство владельца', summary: 'С чего начать, что делать каждый день, где что лежит', source: guideMd },
-  { slug: 'everyday', file: '08-everyday.md', title: 'Главный экран и регламент', summary: 'Сроки ТО, «Отметить, когда делалось», самопроверка, ОСАГО', source: everydayMd },
+  { slug: 'everyday', file: '08-everyday.md', title: 'Главный экран и регламент', summary: 'Сроки ТО, загрузка таблицы регламента, самопроверка, ОСАГО', source: everydayMd },
   { slug: 'recognition', file: '06-recognition.md', title: 'Три способа внести документ', summary: 'Claude Code, чат-ИИ, вручную; экран проверки', source: recognitionMd },
   { slug: 'sync', file: '04-sync.md', title: 'Синхронизация', summary: 'Токен, настройка телефона и компьютера, истёкший токен, забытый пароль', source: syncMd },
   { slug: 'claude', file: '05-claude-code.md', title: 'Распознавание через Claude Code', summary: 'Сканы во «Входящих», /parse-scans на компьютере, проверка в приложении', source: claudeMd },
