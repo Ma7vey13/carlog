@@ -6,6 +6,8 @@ import type { RegulationItem } from '../../core/model';
 import type { CurrentMileage, ItemSchedule } from '../../core/schedule';
 import { dueText } from '../../core/scheduleText';
 import { parseKm } from '../../core/visitForm';
+import { isMileageStale } from '../../core/mileage';
+import { serviceList } from '../../core/serviceList';
 import { getDb } from '../../db/db';
 import { useOpenDraftCount } from '../../db/hooks';
 import { addManualMileage } from '../../db/visits';
@@ -21,15 +23,17 @@ import { TermDocsScreen, TermRow, useTermStatuses } from './TermDocsScreen';
 import { ComponentCard } from './ComponentCard';
 import { ItemCard } from './ItemCard';
 import { ManualEventDialog } from './ManualEventDialog';
+import { ServiceListScreen } from './ServiceListScreen';
 import { useSchedule } from './useSchedule';
 
-/** Home tab: `/`, `/state/item/<id>`, `/state/component/<id>`, `/state/self-check[/…]`, `/state/docs[/…]`. */
+/** Home tab: `/`, `/state/item/<id>`, `/state/component/<id>`, `/state/self-check[/…]`, `/state/docs[/…]`, `/state/service-list`. */
 export function StateScreen({ route }: { route: Route }) {
   const [kind, id, action] = route.rest;
   if (kind === 'item' && id) return <ItemCard id={id} backHref={hrefFor('/')} />;
   if (kind === 'component' && id) return <ComponentCard id={id} />;
   if (kind === 'self-check') return <SelfCheckScreen id={id ?? null} />;
   if (kind === 'docs') return <TermDocsScreen id={id ?? null} edit={action === 'edit'} />;
+  if (kind === 'service-list') return <ServiceListScreen />;
   return <StateHome />;
 }
 
@@ -51,6 +55,7 @@ function StateHome() {
   const urgent = data.items.filter((s) => s.status === 'red' || s.status === 'yellow');
   const gray = data.items.filter((s) => s.status === 'gray');
   const green = data.items.filter((s) => s.status === 'green');
+  const forService = serviceList(data.items, checks).length;
 
   return (
     <div className="stack">
@@ -71,6 +76,11 @@ function StateHome() {
               <ScheduleRow key={s.item.id} s={s} />
             ))}
           </ul>
+          {forService > 0 && (
+            <a className="btn btn--secondary" href={hrefFor('/state/service-list')} data-testid="service-list-button">
+              Список к ТО
+            </a>
+          )}
         </section>
       ) : (
         <p className="notice notice--info" data-testid="all-ok">
@@ -124,6 +134,10 @@ function StateHome() {
       )}
 
       <section className="card" aria-label="Ещё">
+        <a className="menu-link" href={hrefFor('/state/service-list')} data-testid="service-list-link">
+          <span>Список к следующему ТО</span>
+          <span className="muted">{forService ? `${forService} ${plural(forService, 'пункт', 'пункта', 'пунктов')}` : 'пусто'} ›</span>
+        </a>
         <a className="menu-link" href={hrefFor('/state/self-check')}>
           <span>Самопроверка</span>
           <span className="muted">
@@ -207,6 +221,11 @@ function MileageCard({ current, today }: { current: CurrentMileage | null; today
       {current && (
         <p className="hint" data-testid="mileage-basis">
           {current.date === today ? 'Отмечен сегодня' : `Отмечен ${formatDate(current.date)}`}
+        </p>
+      )}
+      {current && !saved && isMileageStale(current.date, today) && (
+        <p className="mileage-card__stale" data-testid="mileage-stale">
+          Пробег не обновляли больше месяца. Введите показания одометра — сроки по пробегу посчитаются точнее.
         </p>
       )}
       <form

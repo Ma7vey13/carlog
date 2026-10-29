@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dailyAverage, forecastKm, mileagePoints } from './mileage';
+import { dailyAverage, forecastKm, isMileageStale, mileagePoints } from './mileage';
 import type { MileageEntry } from './model';
 
 const entry = (date: string, km: number, deleted = false): MileageEntry => ({
@@ -42,5 +42,15 @@ describe('mileage forecast', () => {
   it('has no average with one reading and nothing before the date', () => {
     expect(forecastKm(mileagePoints([entry('2025-10-30', 303700)]), '2026-01-01')).toEqual({ km: 303700, lastDate: '2025-10-30', lastKm: 303700, dailyAvg: null });
     expect(forecastKm(points, '2020-01-01')).toBeNull();
+  });
+});
+
+describe('stale mileage', () => {
+  it('asks for a reading a month after the last one', () => {
+    expect(isMileageStale('2026-09-29', '2026-10-28')).toBe(false);
+    expect(isMileageStale('2026-09-29', '2026-10-29')).toBe(true);
+    // the end of a short month
+    expect(isMileageStale('2026-01-31', '2026-02-27')).toBe(false);
+    expect(isMileageStale('2026-01-31', '2026-02-28')).toBe(true);
   });
 });

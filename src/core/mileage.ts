@@ -1,7 +1,7 @@
 // Mileage forecast (SPEC section 9): last real reading + average daily mileage × days since.
 // The average uses readings of the last 12 months, or the whole history if that is too little.
 
-import { daysBetween } from './dates';
+import { addMonths, daysBetween } from './dates';
 import type { IsoDate, MileageEntry } from './model';
 
 export interface MileagePoint {
@@ -54,4 +54,9 @@ export function forecastKm(points: readonly MileagePoint[], at: IsoDate): Mileag
     lastKm: last.km,
     dailyAvg: avg,
   };
+}
+
+/** The last reading is a month old or older (D-096): the main screen asks for a fresh one. */
+export function isMileageStale(lastDate: IsoDate, today: IsoDate): boolean {
+  return addMonths(lastDate, 1) <= today;
 }

@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react';
 import { usePageHeader } from '../../app/pageHeader';
 import { hrefFor } from '../../app/routes';
 import { activeDocuments, type VisitBundle } from '../../core/bundle';
-import { formatDate, plural } from '../../core/format';
+import { formatDate, formatKm, plural } from '../../core/format';
+import { installedFor, type InstalledVisit } from '../../core/installed';
+import { formatQty, formatRub } from '../../core/money';
 import { PERFORMER_LABELS, REGULATION_ACTION_LABELS, SCHEDULE_STATUS_LABELS } from '../../core/labels';
 import { unlinkedMatchingLines } from '../../core/keywords';
 import type { Id, RegulationItem } from '../../core/model';
@@ -102,6 +104,8 @@ export function ItemCard({ id, backHref }: { id: Id; backHref: string }) {
       </section>
 
       <LinkSuggestions item={item} bundles={data.bundles} />
+
+      <InstalledParts item={item} bundles={data.bundles} />
 
       <section className="card" aria-label="Когда делалось">
         <h2 className="card__title">Когда делалось</h2>
@@ -236,5 +240,73 @@ export function LinkSuggestions({ item, bundles }: { item: RegulationItem; bundl
         </button>
       </div>
     </section>
+  );
+}
+
+/** "Что ставили" (D-094): parts of each visit where the item was done, with brand, article and price. */
+function InstalledParts({ item, bundles }: { item: RegulationItem; bundles: VisitBundle[] }) {
+  const visits = useMemo(() => installedFor(item, bundles).filter((v) => v.parts.length > 0 || v.worksSum !== null), [item, bundles]);
+  if (visits.length === 0) return null;
+  const [latest, ...older] = visits;
+  return (
+    <section className="card" aria-label="Что ставили" data-testid="installed">
+      <h2 className="card__title">Что ставили</h2>
+      <InstalledVisitBlock v={latest!} />
+      {older.length > 0 && (
+        <details className="installed__older">
+          <summary>
+            Раньше: {older.length} {plural(older.length, 'раз', 'раза', 'раз')}
+          </summary>
+          {older.map((v) => (
+            <InstalledVisitBlock key={v.visitId} v={v} />
+          ))}
+        </details>
+      )}
+    </section>
+  );
+}
+
+function InstalledVisitBlock({ v }: { v: InstalledVisit }) {
+  const head = [formatDate(v.date), v.km !== null ? formatKm(v.km) : null, v.self ? 'своя работа' : v.shop].filter(Boolean).join(' · ');
+  return (
+    <div className="installed" data-testid="installed-visit">
+      <a className="installed__head" href={hrefFor(`/history/${v.visitId}`)}>
+        {head} ›
+      </a>
+      {v.parts.length > 0 ? (
+        <ul className="line-list">
+          {v.parts.map((l) => {
+            const meta = [l.brand, l.article ? `арт. ${l.article}` : null].filter(Boolean);
+            // a price without a quantity is what was paid for the line
+            const sum = l.sum ?? (l.qty === null ? l.price : null);
+            return (
+              <li key={l.id} className="line-item" data-testid="installed-part">
+                <div className="line-item__name">
+                  {l.name || l.rawName}
+                  {l.customerPart && <span className="tag">своя запчасть</span>}
+                </div>
+                {meta.length > 0 && <div className="line-item__meta installed__meta">{meta.join(' · ')}</div>}
+                {sum !== null && (
+                  <div className="line-item__nums">
+                    {l.qty !== null && l.price !== null ? (
+                      <span className="muted">
+                        {formatQty(l.qty)}
+                        {l.unit ? ` ${l.unit}` : ''} × {formatRub(l.price)}
+                      </span>
+                    ) : (
+                      <span />
+                    )}
+                    <span className="line-item__sum">{formatRub(sum)}</span>
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="hint">Запчасти в документе не указаны.</p>
+      )}
+      {v.worksSum !== null && <p className="installed__works">Работа: {formatRub(v.worksSum)}</p>}
+    </div>
   );
 }
