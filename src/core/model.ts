@@ -251,6 +251,23 @@ export interface Draft extends SyncFields {
   archivedAt?: IsoDateTime | null;
 }
 
+export type RepairUrgency = 'urgent' | 'soon' | 'later';
+
+/**
+ * "Нужно отремонтировать" (D-097): something on the car that needs a repair, not on the regulation —
+ * "ШРУС хрустит". Open until marked done; done ones are kept.
+ */
+export interface Repair extends SyncFields {
+  title: string;
+  note: string;
+  urgency: RepairUrgency;
+  componentId: Id | null;
+  /** null while open. */
+  doneDate: IsoDate | null;
+  /** The visit where it was done, if the owner picked one. */
+  visitId: Id | null;
+}
+
 /** Synced app settings: a single record with a fixed id. */
 export interface Settings extends SyncFields {
   severeConditions: boolean;

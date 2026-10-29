@@ -9,7 +9,8 @@ import { parseKm } from '../../core/visitForm';
 import { isMileageStale } from '../../core/mileage';
 import { serviceList } from '../../core/serviceList';
 import { getDb } from '../../db/db';
-import { useOpenDraftCount } from '../../db/hooks';
+import { useOpenDraftCount, useRepairs } from '../../db/hooks';
+import { openRepairs } from '../../core/repairs';
 import { addManualMileage } from '../../db/visits';
 import { EmptyState } from '../../ui/EmptyState';
 import { RegulationIcon } from '../../ui/icons';
@@ -23,10 +24,11 @@ import { TermDocsScreen, TermRow, useTermStatuses } from './TermDocsScreen';
 import { ComponentCard } from './ComponentCard';
 import { ItemCard } from './ItemCard';
 import { ManualEventDialog } from './ManualEventDialog';
+import { RepairRow, RepairsScreen } from './RepairsScreen';
 import { ServiceListScreen } from './ServiceListScreen';
 import { useSchedule } from './useSchedule';
 
-/** Home tab: `/`, `/state/item/<id>`, `/state/component/<id>`, `/state/self-check[/…]`, `/state/docs[/…]`, `/state/service-list`. */
+/** Home tab: `/`, `/state/item/<id>`, `/state/component/<id>`, `/state/self-check[/…]`, `/state/docs[/…]`, `/state/service-list`, `/state/repairs[/…]`. */
 export function StateScreen({ route }: { route: Route }) {
   const [kind, id, action] = route.rest;
   if (kind === 'item' && id) return <ItemCard id={id} backHref={hrefFor('/')} />;
@@ -34,6 +36,7 @@ export function StateScreen({ route }: { route: Route }) {
   if (kind === 'self-check') return <SelfCheckScreen id={id ?? null} />;
   if (kind === 'docs') return <TermDocsScreen id={id ?? null} edit={action === 'edit'} />;
   if (kind === 'service-list') return <ServiceListScreen />;
+  if (kind === 'repairs') return <RepairsScreen id={id ?? null} />;
   return <StateHome />;
 }
 
@@ -46,9 +49,10 @@ function StateHome() {
   const terms = useTermStatuses();
   const checks = useSelfCheck();
   const inbox = useOpenDraftCount();
+  const repairs = useRepairs();
   const [marking, setMarking] = useState<RegulationItem | null>(null);
 
-  if (!data || !terms || !checks) return <p className="muted">Загрузка…</p>;
+  if (!data || !terms || !checks || !repairs) return <p className="muted">Загрузка…</p>;
 
   const termAlerts = terms.filter((t) => t.state === 'expired' || t.state === 'soon');
 
@@ -56,6 +60,7 @@ function StateHome() {
   const gray = data.items.filter((s) => s.status === 'gray');
   const green = data.items.filter((s) => s.status === 'green');
   const forService = serviceList(data.items, checks).length;
+  const toRepair = openRepairs(repairs);
 
   return (
     <div className="stack">
@@ -86,6 +91,22 @@ function StateHome() {
         <p className="notice notice--info" data-testid="all-ok">
           Ничего срочного: все пункты с данными в порядке.
         </p>
+      )}
+
+      {toRepair.length > 0 && (
+        <section className="card" aria-label="Нужно отремонтировать" data-testid="repairs-card">
+          <div className="card__head">
+            <h2 className="card__title">Нужно отремонтировать</h2>
+            <a className="btn btn--ghost btn--small card__head-action" href={hrefFor('/state/repairs/new')} aria-label="Добавить ремонт">
+              + Добавить
+            </a>
+          </div>
+          <ul className="sched-list">
+            {toRepair.map((r) => (
+              <RepairRow key={r.id} r={r} />
+            ))}
+          </ul>
+        </section>
       )}
 
       {termAlerts.length > 0 && (
@@ -137,6 +158,10 @@ function StateHome() {
         <a className="menu-link" href={hrefFor('/state/service-list')} data-testid="service-list-link">
           <span>Список к следующему ТО</span>
           <span className="muted">{forService ? `${forService} ${plural(forService, 'пункт', 'пункта', 'пунктов')}` : 'пусто'} ›</span>
+        </a>
+        <a className="menu-link" href={hrefFor('/state/repairs')} data-testid="repairs-link">
+          <span>Нужно отремонтировать</span>
+          <span className="muted">{toRepair.length ? `${toRepair.length} ${plural(toRepair.length, 'запись', 'записи', 'записей')}` : 'нет'} ›</span>
         </a>
         <a className="menu-link" href={hrefFor('/state/self-check')}>
           <span>Самопроверка</span>

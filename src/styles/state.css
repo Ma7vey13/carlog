@@ -569,6 +569,11 @@
   background: var(--status-green);
 }
 
+.service-item--gray .sched-dot {
+  background: transparent;
+  border: 2px solid var(--status-gray);
+}
+
 .service-item--off .service-item__text {
   opacity: 0.55;
 }
@@ -642,8 +647,13 @@
     font-weight: 700;
   }
 
-  .service-item--off {
+  .service-item--off,
+  .service-item--unpicked {
     display: none;
+  }
+
+  h2.print-only {
+    display: block;
   }
 
   .service-item {
@@ -707,4 +717,10 @@
   margin-top: 8px;
   cursor: pointer;
   color: var(--accent);
+}
+
+/* A small action next to a card title ("+ Добавить"): stays on one line. */
+.card__head-action {
+  flex: none;
+  white-space: nowrap;
 }

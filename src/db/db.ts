@@ -11,6 +11,7 @@ import type {
   MileageEntry,
   RegulationImport,
   RegulationItem,
+  Repair,
   Scan,
   ScanBlob,
   SelfCheckItem,
@@ -37,6 +38,7 @@ export const SYNCED_TABLES = [
   'selfCheckItems',
   'selfCheckLogs',
   'termDocuments',
+  'repairs',
   'scans',
   'drafts',
   'settings',
@@ -59,6 +61,7 @@ export class CarlogDB extends Dexie {
   selfCheckItems!: EntityTable<SelfCheckItem, 'id'>;
   selfCheckLogs!: EntityTable<SelfCheckLog, 'id'>;
   termDocuments!: EntityTable<TermDocument, 'id'>;
+  repairs!: EntityTable<Repair, 'id'>;
   scans!: EntityTable<Scan, 'id'>;
   drafts!: EntityTable<Draft, 'id'>;
   settings!: EntityTable<Settings, 'id'>;
@@ -93,6 +96,8 @@ export class CarlogDB extends Dexie {
     });
     // Stage 9: uploads of the regulation table.
     this.version(2).stores({ regulationImports: 'id, updatedAt' });
+    // "Нужно отремонтировать" (D-097).
+    this.version(3).stores({ repairs: 'id, updatedAt, componentId' });
   }
 }
 

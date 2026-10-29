@@ -3,7 +3,7 @@ import { reg } from '../../tests/fixtures/bundles';
 import type { RegulationItem, SelfCheckItem } from './model';
 import type { ItemSchedule, ScheduleStatus } from './schedule';
 import type { SelfCheckStatus } from './selfCheck';
-import { serviceList, serviceListText } from './serviceList';
+import { repairEntries, serviceList, serviceListText } from './serviceList';
 
 const sched = (item: RegulationItem, status: ScheduleStatus, remainingKm: number | null, remainingDays: number | null): ItemSchedule => ({
   item,
@@ -78,5 +78,14 @@ describe('Список к ТО', () => {
   it('leaves out an empty group', () => {
     expect(serviceListText(serviceList([sched(oil, 'yellow', 500, 200)], []))).toBe('Заменить:\n- Масло двигателя');
     expect(serviceListText([])).toBe('');
+  });
+
+  it('adds picked repairs as the third group', () => {
+    const repair = { id: 'r1', createdAt: '', updatedAt: '', deleted: false, deviceId: 'd', title: 'ШРУС передний левый', note: 'хрустит при повороте', urgency: 'urgent' as const, componentId: null, doneDate: null, visitId: null };
+    const entries = repairEntries([repair]);
+    expect(entries[0]).toMatchObject({ group: 'repair', status: 'red', reason: 'Срочно', path: '/state/repairs/r1' });
+    expect(serviceListText([...serviceList([sched(oil, 'yellow', 500, 200)], []), ...entries])).toBe(
+      'Заменить:\n- Масло двигателя\n\nОтремонтировать:\n- ШРУС передний левый — хрустит при повороте',
+    );
   });
 });

@@ -1,8 +1,12 @@
 // "Список к ТО" (D-093): what to tell the service at the next visit. Items the service does that are
 // due within the horizon, as "Заменить" / "Проверить", plus self-check items marked "Нужно внимание"
 // (the owner noticed something; the master should look). Items the owner does himself stay out.
+// Repairs from "Нужно отремонтировать" (D-097) are not in the list by themselves: the owner picks
+// which to add, and they go as a third group, "Отремонтировать".
 
-import type { Id } from './model';
+import { REPAIR_URGENCY_LABELS } from './labels';
+import type { Id, Repair } from './model';
+import { REPAIR_DOT } from './repairs';
 import type { ItemSchedule, ScheduleStatus } from './schedule';
 import { dueText } from './scheduleText';
 import { selfCheckText, type SelfCheckStatus } from './selfCheck';
@@ -10,9 +14,11 @@ import { selfCheckText, type SelfCheckStatus } from './selfCheck';
 /** "Ближайшее ТО": what comes within this many km or days. */
 export const SERVICE_LIST_HORIZON = { km: 2000, days: 60 } as const;
 
-export type ServiceListGroup = 'replace' | 'inspect';
+export type ServiceListGroup = 'replace' | 'inspect' | 'repair';
 
-export const SERVICE_LIST_GROUP_TITLES: Record<ServiceListGroup, string> = { replace: 'Заменить', inspect: 'Проверить' };
+export const SERVICE_LIST_GROUPS: readonly ServiceListGroup[] = ['replace', 'inspect', 'repair'];
+
+export const SERVICE_LIST_GROUP_TITLES: Record<ServiceListGroup, string> = { replace: 'Заменить', inspect: 'Проверить', repair: 'Отремонтировать' };
 
 export interface ServiceListEntry {
   id: Id;
@@ -64,10 +70,23 @@ export function serviceList(items: readonly ItemSchedule[], checks: readonly Sel
   return out;
 }
 
-/** The plain list for a messenger: two groups, one line per entry, nothing else. */
+/** Open repairs as entries of the "Отремонтировать" group, to pick from. */
+export function repairEntries(repairs: readonly Repair[]): ServiceListEntry[] {
+  return repairs.map((r) => ({
+    id: r.id,
+    group: 'repair',
+    name: r.title,
+    note: r.note,
+    status: REPAIR_DOT[r.urgency],
+    reason: REPAIR_URGENCY_LABELS[r.urgency],
+    path: `/state/repairs/${r.id}`,
+  }));
+}
+
+/** The plain list for a messenger: the groups in order, one line per entry, nothing else. */
 export function serviceListText(entries: readonly ServiceListEntry[]): string {
   const blocks: string[] = [];
-  for (const group of ['replace', 'inspect'] as const) {
+  for (const group of SERVICE_LIST_GROUPS) {
     const lines = entries.filter((e) => e.group === group).map((e) => `- ${e.name}${e.note ? ` — ${e.note}` : ''}`);
     if (lines.length) blocks.push(`${SERVICE_LIST_GROUP_TITLES[group]}:\n${lines.join('\n')}`);
   }

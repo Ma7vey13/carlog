@@ -1,7 +1,7 @@
 // Russian UI labels for stored enum values.
 
 import type { TotalsMismatch } from './bundle';
-import type { Axle, CarDocument, DocumentType, DraftStatus, LineKind, Performer, RegulationAction, RegulationSource, Side, VisitKind } from './model';
+import type { Axle, CarDocument, DocumentType, DraftStatus, LineKind, Performer, RegulationAction, RegulationSource, RepairUrgency, Side, VisitKind } from './model';
 import type { Purpose } from './purpose';
 import type { ScheduleStatus } from './schedule';
 import { formatDate } from './format';
@@ -34,6 +34,8 @@ export const DRAFT_STATUS_LABELS: Record<DraftStatus, string> = {
 };
 
 /** ТО or ремонт (D-089), see core/purpose.ts. */
+export const REPAIR_URGENCY_LABELS: Record<RepairUrgency, string> = { urgent: 'Срочно', soon: 'Скоро', later: 'При случае' };
+
 export const PURPOSE_LABELS: Record<Purpose, string> = { maintenance: 'ТО', repair: 'Ремонт' };
 
 export const VISIT_KIND_LABELS: Record<VisitKind, string> = {

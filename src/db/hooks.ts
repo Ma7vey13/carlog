@@ -11,6 +11,7 @@ import type {
   MatchRule,
   MileageEntry,
   RegulationItem,
+  Repair,
   Scan,
   SelfCheckItem,
   SelfCheckLog,
@@ -18,6 +19,7 @@ import type {
   TermDocument,
 } from '../core/model';
 import { isOpenDraft, loadDrafts } from './drafts';
+import { loadRepairs } from './repairs';
 import { loadScans } from './scans';
 import { getDb } from './db';
 import { loadManualEvents, loadRegulationItems, loadSettings } from './regulation';
@@ -108,4 +110,8 @@ export function componentTree(components: readonly Component[]): Array<{ compone
   };
   walk(null, 0);
   return out;
+}
+
+export function useRepairs(): Repair[] | undefined {
+  return useLiveQuery(() => loadRepairs(getDb()), []);
 }

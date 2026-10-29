@@ -114,3 +114,63 @@ test('service list, what was put on, expenses and the mileage note', async ({ pa
 
   expect(errors).toEqual([]);
 });
+
+test('a repair: added, on the main screen, picked into the service list, done', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.clock.setFixedTime(new Date('2026-10-28T12:00:00'));
+
+  await page.goto('./');
+  await expect(page.getByTestId('repairs-link')).toContainText('нет');
+  await page.getByTestId('repairs-link').click();
+  await expect(page.getByTestId('repairs-empty')).toBeVisible();
+  await page.getByRole('link', { name: 'Добавить ремонт' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Новый ремонт');
+
+  // Title is required.
+  await page.getByRole('button', { name: 'Сохранить' }).click();
+  await expect(page.getByText('Напишите, что нужно отремонтировать')).toBeVisible();
+  await page.getByLabel('Что отремонтировать').fill('ШРУС передний левый');
+  await page.getByRole('radiogroup', { name: 'Срочность' }).getByRole('radio', { name: 'Срочно' }).click();
+  await page.getByLabel('Узел (необязательно)').selectOption({ label: 'Приводы, валы, ШРУСы' });
+  await page.getByLabel('Заметка').fill('хрустит при повороте');
+  expect(await hasHorizontalScroll(page)).toBe(false);
+  await page.getByRole('button', { name: 'Сохранить' }).click();
+  await expect(page.getByTestId('repair-row')).toHaveAttribute('data-urgency', 'urgent');
+
+  // The main screen: its own block with the "Ремонт" tag.
+  await page.goto('./');
+  const card = page.getByTestId('repairs-card');
+  await expect(card.getByTestId('repair-row')).toContainText('ШРУС передний левый');
+  await expect(card.getByTestId('repair-row')).toContainText('Ремонт');
+  await expect(card.getByTestId('repair-row')).toContainText('Срочно · хрустит при повороте');
+
+  // The service list: not in it until picked.
+  await page.getByTestId('service-list-link').click();
+  await expect(page.getByTestId('service-list-empty')).toBeVisible();
+  const picker = page.getByTestId('repair-picker');
+  await expect(picker.getByRole('checkbox')).not.toBeChecked();
+  await expect(page.getByRole('button', { name: 'Скопировать' })).toBeDisabled();
+  await picker.getByRole('checkbox').check();
+  await page.getByRole('button', { name: 'Скопировать' }).click();
+  expect(await clipboard(page)).toBe('Отремонтировать:\n- ШРУС передний левый — хрустит при повороте');
+  await page.emulateMedia({ media: 'print' });
+  await expect(picker.getByRole('heading', { name: 'Отремонтировать' })).toBeVisible();
+  await expect(picker.getByText('Добавить из «Нужно отремонтировать»')).toBeHidden();
+  await page.emulateMedia({ media: 'screen' });
+
+  // Done: off the main screen, kept under "Сделано".
+  await picker.getByRole('link', { name: 'Открыть: ШРУС передний левый' }).click();
+  await page.getByRole('button', { name: 'Сделано' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Ремонт сделан' });
+  await expect(dialog.getByLabel('Когда')).toHaveValue('2026-10-28');
+  await dialog.getByRole('button', { name: 'Сохранить' }).click();
+  await expect(page.getByTestId('repair-status')).toContainText('Сделано 28.10.2026');
+  await page.goto('./');
+  await expect(page.getByTestId('repairs-card')).toBeHidden();
+  await page.goto('./#/state/repairs');
+  await expect(page.getByTestId('repairs-done')).toContainText('Сделано: 1');
+
+  expect(errors).toEqual([]);
+});
