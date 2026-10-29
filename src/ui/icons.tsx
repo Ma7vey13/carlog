@@ -125,6 +125,61 @@ export const CloseIcon = (p: IconProps) => (
   </Icon>
 );
 
+/** Tiles of the main screen (D-098). */
+export const ClipboardListIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="5" y="4.5" width="14" height="16.5" rx="2" />
+    <path d="M9 4.5V3.5h6v1" />
+    <path d="M9 10h6M9 13.5h6M9 17h4" />
+  </Icon>
+);
+
+export const WrenchIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M14.5 4.5a4.5 4.5 0 0 0-4.3 5.8L4.5 16a2.1 2.1 0 0 0 3 3l5.7-5.7a4.5 4.5 0 0 0 5.8-5.8l-2.6 2.6-2.4-.6-.6-2.4 2.6-2.6a4.5 4.5 0 0 0-1.5-.4z" />
+  </Icon>
+);
+
+export const ChecklistIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M4 6.5l1.6 1.6L8.5 5M4 12.5l1.6 1.6 2.9-3.1M4 18.5l1.6 1.6 2.9-3.1" />
+    <path d="M11.5 7h8.5M11.5 13h8.5M11.5 19h8.5" />
+  </Icon>
+);
+
+export const CertificateIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M14 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h4" />
+    <path d="M14 3.5l5 5V11" />
+    <path d="M14 3.5v5h5" />
+    <circle cx="17" cy="15.5" r="2.8" />
+    <path d="M15.5 18l-.8 3.2 2.3-1.1 2.3 1.1-.8-3.2" />
+  </Icon>
+);
+
+export const DragIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="9" cy="6" r="1.3" fill="currentColor" stroke="none" />
+    <circle cx="15" cy="6" r="1.3" fill="currentColor" stroke="none" />
+    <circle cx="9" cy="12" r="1.3" fill="currentColor" stroke="none" />
+    <circle cx="15" cy="12" r="1.3" fill="currentColor" stroke="none" />
+    <circle cx="9" cy="18" r="1.3" fill="currentColor" stroke="none" />
+    <circle cx="15" cy="18" r="1.3" fill="currentColor" stroke="none" />
+  </Icon>
+);
+
+export const ArrowUpIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 19V5M6 11l6-6 6 6" />
+  </Icon>
+);
+
+export const ArrowDownIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 5v14M6 13l6 6 6-6" />
+  </Icon>
+);
+
 export const TAB_ICONS: Record<TabId, (p: IconProps) => ReactNode> = {
   state: GaugeIcon,
   history: HistoryIcon,

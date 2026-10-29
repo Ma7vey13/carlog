@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
+import { HOME_BLOCK_LABELS, HOME_BLOCKS, loadHomeOrder, moveBlock, saveHomeOrder, type HomeBlock } from '../../app/homeOrder';
 import { hrefFor, type Route } from '../../app/routes';
 import { formatDate, formatKm, formatLocalDateTime, plural } from '../../core/format';
 import { SCHEDULE_STATUS_LABELS } from '../../core/labels';
-import type { RegulationItem } from '../../core/model';
+import type { RegulationItem, Repair } from '../../core/model';
 import type { CurrentMileage, ItemSchedule } from '../../core/schedule';
 import { dueText } from '../../core/scheduleText';
 import { parseKm } from '../../core/visitForm';
@@ -13,7 +14,7 @@ import { useOpenDraftCount, useRepairs } from '../../db/hooks';
 import { openRepairs } from '../../core/repairs';
 import { addManualMileage } from '../../db/visits';
 import { EmptyState } from '../../ui/EmptyState';
-import { RegulationIcon } from '../../ui/icons';
+import { ArrowDownIcon, ArrowUpIcon, CertificateIcon, ChecklistIcon, ClipboardListIcon, DragIcon, EditIcon, RegulationIcon, WrenchIcon } from '../../ui/icons';
 import { selfCheckText, type SelfCheckStatus } from '../../core/selfCheck';
 import type { TermStatus } from '../../core/termDocs';
 import { useSyncState, useUnsentCount } from '../sync/SyncPanel';
@@ -41,8 +42,9 @@ export function StateScreen({ route }: { route: Route }) {
 }
 
 /**
- * SPEC section 9, top to bottom: mileage → red and yellow items → documents with an end date that
- * is near or past → self-check that is due → inbox → sync status → green items, collapsed.
+ * SPEC section 9: mileage, the tiles (D-098), red and yellow items, repairs to do, documents with an
+ * end date that is near or past, self-check, inbox, collapsed gray and green items, sync status.
+ * The owner can reorder the blocks ("Изменить порядок"); the order is kept on this device.
  */
 function StateHome() {
   const data = useSchedule();
@@ -51,22 +53,43 @@ function StateHome() {
   const inbox = useOpenDraftCount();
   const repairs = useRepairs();
   const [marking, setMarking] = useState<RegulationItem | null>(null);
+  const [order, setOrder] = useState<HomeBlock[]>(loadHomeOrder);
+  const [editing, setEditing] = useState(false);
 
   if (!data || !terms || !checks || !repairs) return <p className="muted">Загрузка…</p>;
 
-  const termAlerts = terms.filter((t) => t.state === 'expired' || t.state === 'soon');
+  if (editing) {
+    return (
+      <HomeOrderEditor
+        order={order}
+        onChange={(next) => {
+          setOrder(next);
+          saveHomeOrder(next);
+        }}
+        onReset={() => {
+          setOrder([...HOME_BLOCKS]);
+          saveHomeOrder(null);
+        }}
+        onDone={() => {
+          setEditing(false);
+          window.scrollTo(0, 0);
+        }}
+      />
+    );
+  }
 
+  const termAlerts = terms.filter((t) => t.state === 'expired' || t.state === 'soon');
   const urgent = data.items.filter((s) => s.status === 'red' || s.status === 'yellow');
   const gray = data.items.filter((s) => s.status === 'gray');
   const green = data.items.filter((s) => s.status === 'green');
   const forService = serviceList(data.items, checks).length;
   const toRepair = openRepairs(repairs);
 
-  return (
-    <div className="stack">
-      <MileageCard current={data.current} today={data.today} />
-
-      {data.regulation.length === 0 ? (
+  const blocks: Record<HomeBlock, ReactNode> = {
+    mileage: <MileageCard current={data.current} today={data.today} />,
+    tiles: <HomeTiles forService={forService} repairs={toRepair} checks={checks} terms={terms} />,
+    urgent:
+      data.regulation.length === 0 ? (
         <EmptyState icon={<RegulationIcon />} title="Регламент пуст">
           <p>Добавьте пункты ТО с интервалами — и здесь появится, что и когда менять.</p>
           <a className="btn btn--primary" href={hrefFor('/regulation/new')}>
@@ -91,89 +114,68 @@ function StateHome() {
         <p className="notice notice--info" data-testid="all-ok">
           Ничего срочного: все пункты с данными в порядке.
         </p>
-      )}
-
-      {toRepair.length > 0 && (
-        <section className="card" aria-label="Нужно отремонтировать" data-testid="repairs-card">
-          <div className="card__head">
-            <h2 className="card__title">Нужно отремонтировать</h2>
-            <a className="btn btn--ghost btn--small card__head-action" href={hrefFor('/state/repairs/new')} aria-label="Добавить ремонт">
-              + Добавить
-            </a>
-          </div>
-          <ul className="sched-list">
-            {toRepair.map((r) => (
-              <RepairRow key={r.id} r={r} />
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {termAlerts.length > 0 && (
-        <section className="card" aria-label="Документы со сроком" data-testid="term-alerts">
-          <h2 className="card__title">Документы</h2>
-          <ul className="sched-list">
-            {termAlerts.map((t) => (
-              <TermRow key={t.doc.id} s={t} />
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <SelfCheckCard checks={checks} />
-
-      {inbox > 0 && (
-        <a className="notice notice--warning notice--link" href={hrefFor('/inbox')} data-testid="inbox-line">
-          Входящие: {inbox} {plural(inbox, 'черновик ждёт', 'черновика ждут', 'черновиков ждут')} проверки
-          <span aria-hidden="true">›</span>
-        </a>
-      )}
-
-      <SyncLine />
-
-      {gray.length > 0 && (
-        <details className="card sched-group" data-testid="gray-items">
-          <summary>Нет данных: {gray.length}</summary>
-          <p className="hint">Отметьте, когда это делалось в последний раз, — и срок посчитается.</p>
-          <ul className="sched-list">
-            {gray.map((s) => (
-              <ScheduleRow key={s.item.id} s={s} onMark={s.grayReason === 'no-data' ? () => setMarking(s.item) : undefined} />
-            ))}
-          </ul>
-        </details>
-      )}
-
-      {green.length > 0 && (
-        <details className="card sched-group" data-testid="green-items">
-          <summary>В порядке: {green.length}</summary>
-          <ul className="sched-list">
-            {green.map((s) => (
-              <ScheduleRow key={s.item.id} s={s} />
-            ))}
-          </ul>
-        </details>
-      )}
-
-      <section className="card" aria-label="Ещё">
-        <a className="menu-link" href={hrefFor('/state/service-list')} data-testid="service-list-link">
-          <span>Список к следующему ТО</span>
-          <span className="muted">{forService ? `${forService} ${plural(forService, 'пункт', 'пункта', 'пунктов')}` : 'пусто'} ›</span>
-        </a>
-        <a className="menu-link" href={hrefFor('/state/repairs')} data-testid="repairs-link">
-          <span>Нужно отремонтировать</span>
-          <span className="muted">{toRepair.length ? `${toRepair.length} ${plural(toRepair.length, 'запись', 'записи', 'записей')}` : 'нет'} ›</span>
-        </a>
-        <a className="menu-link" href={hrefFor('/state/self-check')}>
-          <span>Самопроверка</span>
-          <span className="muted">
-            в норме {checks.filter((c) => c.state === 'ok').length} из {checks.length} ›
-          </span>
-        </a>
-        <a className="menu-link" href={hrefFor('/state/docs')} data-testid="docs-link">
-          <span>Документы со сроком</span>
-          <span className="muted">{docsSummary(terms)} ›</span>
-        </a>
+      ),
+    repairs: toRepair.length > 0 && (
+      <section className="card" aria-label="Нужно отремонтировать" data-testid="repairs-card">
+        <div className="card__head">
+          <h2 className="card__title">Нужно отремонтировать</h2>
+          <a className="btn btn--ghost btn--small card__head-action" href={hrefFor('/state/repairs/new')} aria-label="Добавить ремонт">
+            + Добавить
+          </a>
+        </div>
+        <ul className="sched-list">
+          {toRepair.map((r) => (
+            <RepairRow key={r.id} r={r} />
+          ))}
+        </ul>
       </section>
+    ),
+    docs: termAlerts.length > 0 && (
+      <section className="card" aria-label="Документы со сроком" data-testid="term-alerts">
+        <h2 className="card__title">Документы</h2>
+        <ul className="sched-list">
+          {termAlerts.map((t) => (
+            <TermRow key={t.doc.id} s={t} />
+          ))}
+        </ul>
+      </section>
+    ),
+    selfcheck: <SelfCheckCard checks={checks} />,
+    inbox: inbox > 0 && (
+      <a className="notice notice--warning notice--link" href={hrefFor('/inbox')} data-testid="inbox-line">
+        Входящие: {inbox} {plural(inbox, 'черновик ждёт', 'черновика ждут', 'черновиков ждут')} проверки
+        <span aria-hidden="true">›</span>
+      </a>
+    ),
+    gray: gray.length > 0 && (
+      <details className="card sched-group" data-testid="gray-items">
+        <summary>Нет данных: {gray.length}</summary>
+        <p className="hint">Отметьте, когда это делалось в последний раз, — и срок посчитается.</p>
+        <ul className="sched-list">
+          {gray.map((s) => (
+            <ScheduleRow key={s.item.id} s={s} onMark={s.grayReason === 'no-data' ? () => setMarking(s.item) : undefined} />
+          ))}
+        </ul>
+      </details>
+    ),
+    green: green.length > 0 && (
+      <details className="card sched-group" data-testid="green-items">
+        <summary>В порядке: {green.length}</summary>
+        <ul className="sched-list">
+          {green.map((s) => (
+            <ScheduleRow key={s.item.id} s={s} />
+          ))}
+        </ul>
+      </details>
+    ),
+    sync: <SyncLine />,
+  };
+
+  return (
+    <div className="stack">
+      {order.map((id) => (
+        <Fragment key={id}>{blocks[id]}</Fragment>
+      ))}
 
       {data.settings.severeConditions && (
         <p className="hint">
@@ -181,7 +183,144 @@ function StateHome() {
         </p>
       )}
 
+      <button type="button" className="btn btn--ghost home-edit" onClick={() => {
+          setEditing(true);
+          window.scrollTo(0, 0);
+        }}
+        data-testid="home-edit">
+        <EditIcon width={18} height={18} /> Изменить порядок блоков
+      </button>
+
       <ManualEventDialog item={marking} onClose={() => setMarking(null)} />
+    </div>
+  );
+}
+
+function countText(n: number, one: string, few: string, many: string, none: string): string {
+  return n ? `${n} ${plural(n, one, few, many)}` : none;
+}
+
+/** Four tiles under the mileage (D-098): the ways to the service list, repairs, self-check, documents. */
+function HomeTiles({ forService, repairs, checks, terms }: { forService: number; repairs: Repair[]; checks: SelfCheckStatus[]; terms: TermStatus[] }) {
+  const urgentRepairs = repairs.filter((r) => r.urgency === 'urgent').length;
+  const attention = checks.filter((c) => c.state === 'attention').length;
+  const due = checks.filter((c) => c.state === 'due').length;
+  const expired = terms.filter((t) => t.state === 'expired').length;
+  const soon = terms.filter((t) => t.state === 'soon').length;
+  return (
+    <nav className="tiles" aria-label="Главное" data-testid="tiles">
+      <a className="tile tile--primary" href={hrefFor('/state/service-list')} data-testid="service-list-link">
+        <span className="tile__top">
+          <ClipboardListIcon className="tile__icon" />
+        </span>
+        <span className="tile__text">
+          <span className="tile__title">Список к ТО</span>
+          <span className="tile__sub">{countText(forService, 'пункт', 'пункта', 'пунктов', 'пусто')}</span>
+        </span>
+      </a>
+      <a className="tile tile--repair" href={hrefFor('/state/repairs')} data-testid="repairs-link">
+        <span className="tile__top">
+          <WrenchIcon className="tile__icon" />
+          {urgentRepairs > 0 && <span className="tile__badge tile__badge--red">{urgentRepairs} срочно</span>}
+        </span>
+        <span className="tile__text">
+          <span className="tile__title">Отремонтировать</span>
+          <span className="tile__sub">{countText(repairs.length, 'запись', 'записи', 'записей', 'нет')}</span>
+        </span>
+      </a>
+      <a className="tile tile--self" href={hrefFor('/state/self-check')} data-testid="self-check-link">
+        <span className="tile__top">
+          <ChecklistIcon className="tile__icon" />
+          {attention > 0 ? (
+            <span className="tile__badge tile__badge--red">{attention} внимание</span>
+          ) : due > 0 ? (
+            <span className="tile__badge tile__badge--yellow">{due} пора</span>
+          ) : null}
+        </span>
+        <span className="tile__text">
+          <span className="tile__title">Самопроверка</span>
+          <span className="tile__sub">
+            в норме {checks.filter((c) => c.state === 'ok').length} из {checks.length}
+          </span>
+        </span>
+      </a>
+      <a className="tile" href={hrefFor('/state/docs')} data-testid="docs-link">
+        <span className="tile__top">
+          <CertificateIcon className="tile__icon" />
+          {expired > 0 ? <span className="tile__badge tile__badge--red">истёк</span> : soon > 0 ? <span className="tile__badge tile__badge--yellow">скоро</span> : null}
+        </span>
+        <span className="tile__text">
+          <span className="tile__title">Документы</span>
+          <span className="tile__sub">{docsSummary(terms)}</span>
+        </span>
+      </a>
+    </nav>
+  );
+}
+
+/** "Изменить порядок блоков": drag on a computer, arrows anywhere. */
+function HomeOrderEditor({ order, onChange, onReset, onDone }: { order: HomeBlock[]; onChange: (o: HomeBlock[]) => void; onReset: () => void; onDone: () => void }) {
+  const [dragging, setDragging] = useState<number | null>(null);
+  const [over, setOver] = useState<number | null>(null);
+  const end = () => {
+    setDragging(null);
+    setOver(null);
+  };
+  return (
+    <div className="stack" data-testid="home-order">
+      <p className="hint">
+        Перетащите блок за ручку или двигайте стрелками. Порядок запоминается на этом устройстве. Блоки, которые сейчас пустые (например, «Входящие»),
+        появятся на своём месте, когда в них что-то будет.
+      </p>
+      <ol className="order-list">
+        {order.map((id, i) => {
+          const label = HOME_BLOCK_LABELS[id];
+          const cls = ['order-item', dragging === i ? 'order-item--dragging' : '', over === i && dragging !== null && dragging !== i ? 'order-item--over' : '']
+            .filter(Boolean)
+            .join(' ');
+          return (
+            <li
+              key={id}
+              className={cls}
+              draggable
+              data-testid="order-item"
+              data-block={id}
+              onDragStart={(e) => {
+                setDragging(i);
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', id);
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setOver(i);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (dragging !== null) onChange(moveBlock(order, dragging, i));
+                end();
+              }}
+              onDragEnd={end}
+            >
+              <DragIcon className="order-item__handle" />
+              <span className="order-item__name">{label}</span>
+              <button type="button" className="icon-btn" aria-label={`Выше: ${label}`} disabled={i === 0} onClick={() => onChange(moveBlock(order, i, i - 1))}>
+                <ArrowUpIcon width={20} height={20} />
+              </button>
+              <button type="button" className="icon-btn" aria-label={`Ниже: ${label}`} disabled={i === order.length - 1} onClick={() => onChange(moveBlock(order, i, i + 1))}>
+                <ArrowDownIcon width={20} height={20} />
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+      <div className="btn-row">
+        <button type="button" className="btn btn--primary" onClick={onDone}>
+          Готово
+        </button>
+        <button type="button" className="btn btn--secondary" onClick={onReset}>
+          Как было сначала
+        </button>
+      </div>
     </div>
   );
 }
@@ -238,7 +377,7 @@ function MileageCard({ current, today }: { current: CurrentMileage | null; today
   };
 
   return (
-    <section className="card mileage-card" aria-label="Пробег">
+    <section className="card mileage-card" aria-label="Пробег" data-testid="mileage-card">
       <p className="mileage-card__label">Пробег</p>
       <p className="mileage-card__km" data-testid="current-km">
         {current ? formatKm(current.km) : 'не отмечен'}

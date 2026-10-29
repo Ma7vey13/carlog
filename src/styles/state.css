@@ -69,17 +69,30 @@
   background: var(--status-gray);
 }
 
+/* Overdue: the Check Engine lamp; soon: a clock face (D-098). Masks, so the colour follows the theme. */
 .sched-row--red .sched-dot,
-.sched-card--red .sched-dot {
+.sched-card--red .sched-dot,
+.service-item--red .sched-dot,
+.service-item--attention .sched-dot {
+  width: 20px;
+  height: 20px;
+  margin: -4px;
+  border-radius: 0;
   background: var(--status-red);
-  border-radius: 2px;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 4h5v1.5h-1.75V7H15l2 2h2v2h1.5V8.5H22v7h-1.5V13H19v2l-2.5 2.5h-8L6 15v-1H3.5v1H2V9h1.5v1H6V8.5L7.5 7h3.25V5.5H9z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 4h5v1.5h-1.75V7H15l2 2h2v2h1.5V8.5H22v7h-1.5V13H19v2l-2.5 2.5h-8L6 15v-1H3.5v1H2V9h1.5v1H6V8.5L7.5 7h3.25V5.5H9z'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
 .sched-row--yellow .sched-dot,
-.sched-card--yellow .sched-dot {
-  background: var(--status-yellow);
-  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+.sched-card--yellow .sched-dot,
+.service-item--yellow .sched-dot {
+  width: 17px;
+  height: 17px;
+  margin: -2.5px;
   border-radius: 0;
+  background: var(--status-yellow);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='8.7'/%3E%3Cpath d='M12 7.2V12l3.2 2.1'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='8.7'/%3E%3Cpath d='M12 7.2V12l3.2 2.1'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
 .sched-row--green .sched-dot,
@@ -548,21 +561,7 @@
 }
 
 .service-item__reason .sched-dot {
-  width: 9px;
-  height: 9px;
-  margin-top: 6px;
-}
-
-.service-item--red .sched-dot,
-.service-item--attention .sched-dot {
-  background: var(--status-red);
-  border-radius: 2px;
-}
-
-.service-item--yellow .sched-dot {
-  background: var(--status-yellow);
-  clip-path: polygon(50% 0, 100% 100%, 0 100%);
-  border-radius: 0;
+  margin-top: 4px;
 }
 
 .service-item--green .sched-dot {
@@ -723,4 +722,159 @@
 .card__head-action {
   flex: none;
   white-space: nowrap;
+}
+
+/* Tiles under the mileage (D-098): 2 × 2 on a phone and on a computer alike. */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tile {
+  display: grid;
+  align-content: space-between;
+  gap: 10px;
+  min-height: 104px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .tile:hover {
+    border-color: var(--text-muted);
+  }
+}
+
+.tile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.tile__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.tile__icon {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  color: var(--text-muted);
+}
+
+.tile__text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* Whole words only: "Отремонтировать" must not break; the size shrinks a little on a narrow phone. */
+.tile__title {
+  font-size: clamp(13px, 4.1vw, 16px);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  hyphens: manual;
+}
+
+.tile__sub {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.tile--primary {
+  background: var(--kind-to-soft);
+  border-color: var(--kind-to);
+}
+
+.tile--primary .tile__icon,
+.tile--primary .tile__title,
+.tile--primary .tile__sub {
+  color: var(--kind-to);
+}
+
+.tile--repair .tile__icon {
+  color: var(--kind-repair);
+}
+
+.tile--self .tile__icon {
+  color: var(--kind-self);
+}
+
+.tile__badge {
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tile__badge--red {
+  background: color-mix(in srgb, var(--status-red) 14%, transparent);
+  color: var(--status-red);
+}
+
+.tile__badge--yellow {
+  background: color-mix(in srgb, var(--status-yellow) 16%, transparent);
+  color: var(--status-yellow);
+}
+
+/* "Изменить порядок блоков" */
+.home-edit {
+  justify-self: center;
+  gap: 6px;
+}
+
+.order-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.order-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 4px 6px 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: grab;
+}
+
+.order-item--dragging {
+  opacity: 0.5;
+}
+
+.order-item--over {
+  border-color: var(--accent);
+  box-shadow: 0 -3px 0 var(--accent);
+}
+
+.order-item__handle {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--text-muted);
+}
+
+.order-item__name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 550;
+}
+
+.order-item .icon-btn:disabled {
+  opacity: 0.3;
 }
