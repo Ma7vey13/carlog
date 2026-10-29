@@ -244,6 +244,11 @@ export interface Draft extends SyncFields {
   payload: unknown;
   status: DraftStatus;
   visitId: Id | null;
+  /**
+   * When it went to the archive (accepted or rejected); the archive clears itself 30 days later
+   * (D-092). Optional: drafts archived before that use updatedAt.
+   */
+  archivedAt?: IsoDateTime | null;
 }
 
 /** Synced app settings: a single record with a fixed id. */

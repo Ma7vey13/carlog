@@ -206,3 +206,37 @@ test('more: expected-part rules are listed and editable; chat privacy hint is th
   await dialog.getByRole('button', { name: 'Сохранить' }).click();
   await expect(page.getByRole('list', { name: 'Правила' }).getByRole('listitem')).toHaveCount(13);
 });
+
+test('the archive is cleared by hand, and by itself 30 days after a draft went there', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-10-01T12:00:00'));
+  await importJson(page, 'page2.json', PAGE2_ACT);
+  await page.getByRole('button', { name: 'Отклонить' }).click();
+  await page.getByRole('dialog', { name: 'Отклонить черновик?' }).getByRole('button', { name: 'Отклонить' }).click();
+  await page.getByText('Архив (1)').click();
+  await expect(page.getByTestId('archive-until')).toHaveText('В архиве с 01.10.2026, удалится 31.10.2026');
+
+  // 29 days later it is still there; 30 days later it is gone when the app starts.
+  await page.clock.setFixedTime(new Date('2026-10-30T12:00:00'));
+  await page.reload();
+  await expect(page.getByText('Архив (1)')).toBeVisible();
+  await page.clock.setFixedTime(new Date('2026-10-31T13:00:00'));
+  await page.reload();
+  await expect(page.getByText('Входящих нет')).toBeVisible();
+  await expect(page.getByText(/^Архив/)).toHaveCount(0);
+
+  // By hand: "Очистить архив" asks first; a saved visit stays in the history.
+  await importJson(page, 'page2.json', PAGE2_ACT);
+  await saveReview(page);
+  await importJson(page, 'page5.json', PAGE5_ACT);
+  await page.getByRole('button', { name: 'Отклонить' }).click();
+  await page.getByRole('dialog', { name: 'Отклонить черновик?' }).getByRole('button', { name: 'Отклонить' }).click();
+  await page.getByText('Архив (2)').click();
+  await page.getByRole('button', { name: 'Очистить архив' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Очистить архив?' });
+  await expect(dialog).toContainText('Сохранённые визиты и их сканы останутся');
+  await dialog.getByRole('button', { name: 'Удалить 2' }).click();
+  await expect(page.getByTestId('archive-cleared')).toHaveText('Архив очищен: записей — 2, сканов — 0.');
+  await expect(page.getByText(/^Архив \(/)).toHaveCount(0);
+  await page.goto('./#/history');
+  await expect(page.getByTestId('visit-row')).toHaveCount(1);
+});

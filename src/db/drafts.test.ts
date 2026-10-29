@@ -10,6 +10,8 @@ import { updateLine } from '../core/visitForm';
 import { CarlogDB } from './db';
 import { resetDeviceIdCache } from './device';
 import {
+  ARCHIVE_KEEP_DAYS,
+  clearArchive,
   createDraftFromJson,
   createDraftFromScans,
   isOpenDraft,
@@ -183,6 +185,58 @@ describe('saveReviewedDraft', () => {
   it('a JSON import without scans is ready for review at once', async () => {
     const id = await createDraftFromJson(db, PAGE2_ACT);
     expect(await db.drafts.get(id)).toMatchObject({ status: 'ready', scanIds: [], payload: PAGE2_ACT });
+  });
+});
+
+describe('clearing the archive (D-092)', () => {
+  /** A visit saved from a draft (its scan stays) and a rejected draft (its scan goes). */
+  async function archive() {
+    const keptScans = await storeScans(db, [page('visit-page')]);
+    const accepted = await createDraftFromScans(db, keptScans);
+    await setDraftPayload(db, accepted, PAGE2_ACT);
+    const visitId = await saveReviewedDraft(db, { draftId: accepted, form: draftToForm(PAGE2_ACT, { scanIds: keptScans }), decision: { mode: 'new' } });
+    const goneScans = await storeScans(db, [page('junk-page')]);
+    const rejected = await createDraftFromScans(db, goneScans);
+    await rejectDraft(db, rejected);
+    const open = await createDraftFromScans(db, await storeScans(db, [page('new-page')]));
+    return { accepted, rejected, open, visitId, keptScans, goneScans };
+  }
+
+  it('by hand: archived drafts and the scans of rejected ones go; visits, their scans and open drafts stay', async () => {
+    const a = await archive();
+    expect((await db.drafts.get(a.rejected))?.archivedAt).toBeTruthy();
+    expect((await db.drafts.get(a.accepted))?.archivedAt).toBeTruthy();
+
+    expect(await clearArchive(db)).toEqual({ drafts: 2, scans: 1 });
+    expect((await loadDrafts(db)).map((d) => d.id)).toEqual([a.open]);
+    expect(await loadScans(db, a.goneScans)).toEqual([]);
+    expect(await loadScanBlob(db, 'junk-page')).toBeNull();
+    // the visit and its scan are untouched
+    expect((await loadVisitBundle(db, a.visitId))!.documents[0]!.document.scanIds).toEqual(a.keptScans);
+    expect(await loadScans(db, a.keptScans)).toHaveLength(1);
+    expect(await loadScanBlob(db, 'visit-page')).not.toBeNull();
+    expect(await loadScanBlob(db, 'new-page')).not.toBeNull();
+    // deletes are marks, so they sync to the other device
+    expect((await db.drafts.get(a.rejected))?.deleted).toBe(true);
+    expect(await clearArchive(db)).toEqual({ drafts: 0, scans: 0 });
+  });
+
+  it('by itself: only drafts archived 30 days ago or earlier', async () => {
+    const a = await archive();
+    const at = Date.parse((await db.drafts.get(a.rejected))!.archivedAt!);
+    const day = 86_400_000;
+    expect(await clearArchive(db, { olderThanDays: ARCHIVE_KEEP_DAYS, now: new Date(at + 29 * day) })).toEqual({ drafts: 0, scans: 0 });
+    expect(await clearArchive(db, { olderThanDays: ARCHIVE_KEEP_DAYS, now: new Date(at + 30 * day + 60_000) })).toEqual({ drafts: 2, scans: 1 });
+  });
+
+  it('a draft brought back from the archive is not cleared; older drafts count from their last change', async () => {
+    const a = await archive();
+    await restoreDraft(db, a.rejected);
+    expect((await db.drafts.get(a.rejected))?.archivedAt).toBeNull();
+    // archived before archivedAt existed
+    await db.drafts.update(a.accepted, { archivedAt: undefined, updatedAt: '2020-01-01T00:00:00.000Z' });
+    expect(await clearArchive(db, { olderThanDays: ARCHIVE_KEEP_DAYS })).toEqual({ drafts: 1, scans: 0 });
+    expect((await loadDrafts(db)).map((d) => d.id).sort()).toEqual([a.open, a.rejected].sort());
   });
 });
 

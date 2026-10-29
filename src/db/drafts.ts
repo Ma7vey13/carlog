@@ -102,7 +102,8 @@ export async function startManualReview(db: CarlogDB, id: Id): Promise<void> {
 /** "Отклонить": to the archive; scans stay. */
 export async function rejectDraft(db: CarlogDB, id: Id): Promise<void> {
   const deviceId = await getDeviceId(db);
-  await db.drafts.update(id, { status: 'rejected', updatedAt: nowIso(), deviceId });
+  const now = nowIso();
+  await db.drafts.update(id, { status: 'rejected', archivedAt: now, updatedAt: now, deviceId });
 }
 
 /** "Отклонить все": every open draft to the archive in one transaction; scans stay. Returns how many. */
@@ -111,7 +112,7 @@ export async function rejectAllOpenDrafts(db: CarlogDB): Promise<number> {
   const now = nowIso();
   return db.transaction('rw', db.drafts, async () => {
     const open = (await db.drafts.toArray()).filter(isOpenDraft);
-    for (const d of open) await db.drafts.update(d.id, { status: 'rejected', updatedAt: now, deviceId });
+    for (const d of open) await db.drafts.update(d.id, { status: 'rejected', archivedAt: now, updatedAt: now, deviceId });
     return open.length;
   });
 }
@@ -124,7 +125,7 @@ export async function restoreAllRejectedDrafts(db: CarlogDB): Promise<number> {
     const rejected = (await db.drafts.toArray()).filter((d) => !d.deleted && d.status === 'rejected');
     for (const d of rejected) {
       const status = d.payload || d.source === 'manual' ? 'ready' : 'pending';
-      await db.drafts.update(d.id, { status, updatedAt: now, deviceId });
+      await db.drafts.update(d.id, { status, archivedAt: null, updatedAt: now, deviceId });
     }
     return rejected.length;
   });
@@ -136,7 +137,65 @@ export async function restoreDraft(db: CarlogDB, id: Id): Promise<void> {
   if (!draft) return;
   const deviceId = await getDeviceId(db);
   const status = draft.payload || draft.source === 'manual' ? 'ready' : 'pending';
-  await db.drafts.update(id, { status, updatedAt: nowIso(), deviceId });
+  await db.drafts.update(id, { status, archivedAt: null, updatedAt: nowIso(), deviceId });
+}
+
+/** The archive clears itself this many days after a draft went there. */
+export const ARCHIVE_KEEP_DAYS = 30;
+
+/** When the draft went to the archive; drafts archived before D-092 have only updatedAt. */
+export function archivedAtOf(d: Draft): string {
+  return d.archivedAt ?? d.updatedAt;
+}
+
+export interface ArchiveCleanup {
+  drafts: number;
+  scans: number;
+}
+
+/**
+ * "Очистить архив" (D-092): archived drafts are deleted (softly, so other devices follow), and so
+ * are their scans that no document refers to — the pages of rejected drafts. Scans of saved visits
+ * stay, even of a deleted visit. With `olderThanDays`, only drafts archived at least that long ago.
+ * Files no live scan uses are then removed from this device.
+ */
+export async function clearArchive(db: CarlogDB, opts: { olderThanDays?: number; now?: Date } = {}): Promise<ArchiveCleanup> {
+  const deviceId = await getDeviceId(db);
+  const nowDate = opts.now ?? new Date();
+  const now = nowDate.toISOString();
+  const cutoff = opts.olderThanDays === undefined ? null : new Date(nowDate.getTime() - opts.olderThanDays * 86_400_000).toISOString();
+  return db.transaction('rw', [db.drafts, db.documents, db.scans, db.scanBlobs], async () => {
+    const drafts = (await db.drafts.toArray()).filter((d) => !d.deleted);
+    const gone = drafts.filter((d) => !isOpenDraft(d) && (cutoff === null || archivedAtOf(d) <= cutoff));
+    if (gone.length === 0) return { drafts: 0, scans: 0 };
+    const goneIds = new Set(gone.map((d) => d.id));
+
+    const kept = new Set<string>();
+    for (const doc of await db.documents.toArray()) for (const id of doc.scanIds) kept.add(id);
+    for (const d of drafts) if (!goneIds.has(d.id)) for (const id of d.scanIds) kept.add(id);
+    const scanIds = [...new Set(gone.flatMap((d) => d.scanIds))].filter((id) => !kept.has(id));
+
+    const mark = { deleted: true, updatedAt: now, deviceId };
+    for (const d of gone) await db.drafts.update(d.id, mark);
+    let scans = 0;
+    for (const s of await db.scans.bulkGet(scanIds)) {
+      if (!s || s.deleted) continue;
+      await db.scans.update(s.id, mark);
+      scans++;
+    }
+    await pruneScanBlobs(db);
+    return { drafts: gone.length, scans };
+  });
+}
+
+/** Removes local files that no live scan refers to (left by deleted scans, here or on another device). */
+export async function pruneScanBlobs(db: CarlogDB): Promise<number> {
+  return db.transaction('rw', [db.scans, db.scanBlobs], async () => {
+    const used = new Set((await db.scans.toArray()).filter((s) => !s.deleted).map((s) => s.sha256));
+    const orphans = (await db.scanBlobs.toCollection().primaryKeys()).filter((sha) => !used.has(sha));
+    await db.scanBlobs.bulkDelete(orphans);
+    return orphans.length;
+  });
 }
 
 export interface ReviewSave {
@@ -214,7 +273,7 @@ export async function saveReviewedDraft(db: CarlogDB, save: ReviewSave): Promise
     if (mileage) await db.mileageEntries.put(mileage);
     for (const s of superseded) await db.documents.update(s.id, { supersededBy: newDocId, updatedAt: now, deviceId });
     if (rules.length) await db.matchRules.bulkPut(rules);
-    if (save.draftId) await db.drafts.update(save.draftId, { status: 'accepted', visitId: visit.id, updatedAt: now, deviceId });
+    if (save.draftId) await db.drafts.update(save.draftId, { status: 'accepted', visitId: visit.id, archivedAt: now, updatedAt: now, deviceId });
   });
   return visit.id;
 }

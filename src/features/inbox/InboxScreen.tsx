@@ -4,7 +4,7 @@ import { formatDate, formatLocalDate } from '../../core/format';
 import { DOCUMENT_TYPE_LABELS, DRAFT_STATUS_LABELS } from '../../core/labels';
 import type { Draft } from '../../core/model';
 import { getDb } from '../../db/db';
-import { isOpenDraft, rejectAllOpenDrafts, restoreAllRejectedDrafts, restoreDraft } from '../../db/drafts';
+import { ARCHIVE_KEEP_DAYS, archivedAtOf, clearArchive, isOpenDraft, rejectAllOpenDrafts, restoreAllRejectedDrafts, restoreDraft } from '../../db/drafts';
 import { useDrafts, useScans } from '../../db/hooks';
 import { ConfirmDialog } from '../../ui/Dialog';
 import { EmptyState } from '../../ui/EmptyState';
@@ -26,6 +26,8 @@ function InboxList() {
   const archived = useMemo(() => (drafts ?? []).filter((d) => !isOpenDraft(d)), [drafts]);
   const rejectedCount = archived.filter((d) => d.status === 'rejected').length;
   const [confirmRejectAll, setConfirmRejectAll] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [cleared, setCleared] = useState<string | null>(null);
 
   if (drafts === undefined) return <p className="muted">Загрузка…</p>;
 
@@ -81,15 +83,24 @@ function InboxList() {
       {archived.length > 0 && (
         <details className="card archive">
           <summary>Архив ({archived.length})</summary>
-          {rejectedCount > 1 && (
-            <button type="button" className="btn btn--secondary archive__restore-all" onClick={() => void restoreAllRejectedDrafts(getDb())}>
-              Вернуть все отклонённые ({rejectedCount})
+          <p className="hint">Записи удаляются из архива сами через {ARCHIVE_KEEP_DAYS} дней. Сохранённые визиты и их сканы остаются в «Истории».</p>
+          <div className="btn-row">
+            <button type="button" className="btn btn--danger-outline" onClick={() => setConfirmClear(true)}>
+              Очистить архив
             </button>
-          )}
+            {rejectedCount > 1 && (
+              <button type="button" className="btn btn--secondary archive__restore-all" onClick={() => void restoreAllRejectedDrafts(getDb())}>
+                Вернуть все отклонённые ({rejectedCount})
+              </button>
+            )}
+          </div>
           <ul className="feed" aria-label="Архив">
             {archived.map((d) => (
               <li key={d.id} className="archive__row">
                 <DraftRow draft={d} />
+                <span className="hint" data-testid="archive-until">
+                  В архиве с {formatLocalDate(archivedAtOf(d))}, удалится {formatLocalDate(archiveEnd(d))}
+                </span>
                 {d.status === 'accepted' && d.visitId && (
                   <a className="btn btn--ghost" href={hrefFor(`/history/${d.visitId}`)}>
                     К визиту
@@ -105,8 +116,35 @@ function InboxList() {
           </ul>
         </details>
       )}
+      {cleared && (
+        <p className="notice notice--info" role="status" data-testid="archive-cleared">
+          {cleared}
+        </p>
+      )}
+
+      <ConfirmDialog
+        open={confirmClear}
+        title="Очистить архив?"
+        confirmLabel={`Удалить ${archived.length}`}
+        danger
+        onConfirm={() => {
+          setConfirmClear(false);
+          void clearArchive(getDb()).then((r) => setCleared(`Архив очищен: записей — ${r.drafts}, сканов — ${r.scans}.`));
+        }}
+        onCancel={() => setConfirmClear(false)}
+      >
+        <p>
+          Из архива удалятся все записи ({archived.length}). Сканы отклонённых документов удалятся с устройства, вернуть их будет нельзя. Сохранённые
+          визиты и их сканы останутся в «Истории».
+        </p>
+      </ConfirmDialog>
     </div>
   );
+}
+
+/** When the draft leaves the archive by itself. */
+function archiveEnd(d: Draft): string {
+  return new Date(Date.parse(archivedAtOf(d)) + ARCHIVE_KEEP_DAYS * 86_400_000).toISOString();
 }
 
 function DraftRow({ draft }: { draft: Draft }) {
