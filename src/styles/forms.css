@@ -665,6 +665,16 @@ ul.notice {
   color: var(--kind-repair);
 }
 
+.kind-tag--self {
+  background: var(--kind-self-soft);
+  color: var(--kind-self);
+}
+
+.sched-row__name .kind-tag {
+  margin-left: 8px;
+  vertical-align: 2px;
+}
+
 .kind-tag--purchase {
   background: var(--surface-2);
   color: var(--text-muted);

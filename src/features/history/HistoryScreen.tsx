@@ -14,7 +14,7 @@ import { ConfirmDialog } from '../../ui/Dialog';
 import { EmptyState } from '../../ui/EmptyState';
 import { CloseIcon, GaugeIcon, HistoryIcon, PlusIcon, SearchIcon } from '../../ui/icons';
 import { MileageDialog } from './MileageDialog';
-import { PurposeTags, purposeClass } from './PurposeTags';
+import { PurposeTags, purposeClass, SelfTag } from './PurposeTags';
 import { VisitCard } from './VisitCard';
 import { VisitEditor } from './VisitEditor';
 
@@ -194,6 +194,11 @@ function VisitRow({ match, purpose }: { match: VisitMatch; purpose: VisitPurpose
       </div>
       <div className="visit-row__who">
         <PurposeTags purpose={purpose} />
+        {visit.kind === 'self' && (
+          <span className="kind-tags">
+            <SelfTag />
+          </span>
+        )}
         {purpose.purchaseOnly && (
           <span className="kind-tags">
             <span className="kind-tag kind-tag--purchase">Покупка</span>

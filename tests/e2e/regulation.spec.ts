@@ -66,6 +66,7 @@ test('oil 10 000 km / 12 months is due from the visit of 30.10.2025', async ({ p
   await expect(page.getByTestId('mileage-basis')).toHaveText('Отмечен 30.10.2025');
   const row = page.getByTestId('sched-row').filter({ hasText: 'Масло двигателя' });
   await expect(row).toHaveAttribute('data-status', 'yellow');
+  await expect(row.getByTestId('item-kind')).toHaveText('ТО · замена'); // D-091
 
   // Quick mileage update makes it overdue by km.
   await page.getByLabel('Обновить пробег, км').fill('314 000');

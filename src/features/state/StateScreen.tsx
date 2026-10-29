@@ -15,6 +15,7 @@ import { selfCheckText, type SelfCheckStatus } from '../../core/selfCheck';
 import type { TermStatus } from '../../core/termDocs';
 import { useSyncState, useUnsentCount } from '../sync/SyncPanel';
 import { useSession } from '../../sync/session';
+import { ItemKindTag, SelfTag } from '../history/PurposeTags';
 import { SelfCheckScreen, useSelfCheck } from './SelfCheckScreen';
 import { TermDocsScreen, TermRow, useTermStatuses } from './TermDocsScreen';
 import { ComponentCard } from './ComponentCard';
@@ -153,7 +154,10 @@ export function ScheduleRow({ s, onMark, backTo }: { s: ItemSchedule; onMark?: (
       <a className="sched-row__link" href={href}>
         <span className="sched-dot" aria-hidden="true" />
         <span className="sched-row__body">
-          <span className="sched-row__name">{s.item.name}</span>
+          <span className="sched-row__name">
+            {s.item.name}
+            <ItemKindTag item={s.item} />
+          </span>
           <span className="sched-row__due">
             <span className="visually-hidden">{SCHEDULE_STATUS_LABELS[s.status]}: </span>
             {dueText(s)}
@@ -290,7 +294,10 @@ function SelfCheckCard({ checks }: { checks: SelfCheckStatus[] }) {
             <a className="sched-row__link" href={hrefFor(`/state/self-check/${c.item.id}`)}>
               <span className="sched-dot" aria-hidden="true" />
               <span className="sched-row__body">
-                <span className="sched-row__name">{c.item.name}</span>
+                <span className="sched-row__name">
+                  {c.item.name}
+                  <SelfTag />
+                </span>
                 <span className="sched-row__due">{selfCheckText(c)}</span>
               </span>
               <span className="muted" aria-hidden="true">
@@ -306,6 +313,7 @@ function SelfCheckCard({ checks }: { checks: SelfCheckStatus[] }) {
               <span className="sched-row__body">
                 <span className="sched-row__name">
                   Пора проверить: {due.length} {plural(due.length, 'пункт', 'пункта', 'пунктов')}
+                  <SelfTag />
                 </span>
                 <span className="sched-row__due">
                   {due
