@@ -57,6 +57,14 @@ export const RegulationIcon = (p: IconProps) => (
   </Icon>
 );
 
+/** A ruble sign in a coin, for "Расходы". */
+export const ExpensesIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M10 17V7.5h3a2.5 2.5 0 0 1 0 5H8.5M8.5 15h4.5" />
+  </Icon>
+);
+
 export const MoreIcon = (p: IconProps) => (
   <Icon {...p}>
     <circle cx="5.5" cy="12" r="1.5" fill="currentColor" stroke="none" />
@@ -120,6 +128,7 @@ export const CloseIcon = (p: IconProps) => (
 export const TAB_ICONS: Record<TabId, (p: IconProps) => ReactNode> = {
   state: GaugeIcon,
   history: HistoryIcon,
+  expenses: ExpensesIcon,
   inbox: InboxIcon,
   regulation: RegulationIcon,
   more: MoreIcon,

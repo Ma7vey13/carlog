@@ -1,0 +1,134 @@
+/* "Расходы" (D-095): totals, ТО / ремонт / другое, simple bar rows. */
+
+.expenses__period {
+  max-width: 260px;
+}
+
+.expenses__total {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.kind-bar {
+  display: flex;
+  height: 12px;
+  margin-top: 4px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--surface-2);
+}
+
+.expenses__kinds {
+  display: grid;
+  gap: 6px;
+  margin: 4px 0 0;
+}
+
+.expenses__kind {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.expenses__kind dt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.expenses__kind dd {
+  margin: 0;
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.expenses__swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.expenses__kind--maintenance .expenses__swatch,
+.bars__fill--maintenance {
+  background: var(--kind-to);
+}
+
+.expenses__kind--repair .expenses__swatch,
+.bars__fill--repair {
+  background: var(--kind-repair);
+}
+
+.expenses__kind--other .expenses__swatch,
+.bars__fill--other {
+  background: var(--status-gray);
+}
+
+.bars__fill--node {
+  background: var(--accent);
+}
+
+.expenses__per-km {
+  margin: 4px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+}
+
+.bars {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bars__row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 24px;
+  font-size: 14px;
+}
+
+.bars--wide .bars__row {
+  grid-template-columns: minmax(0, 9em) minmax(0, 1fr) auto;
+}
+
+.bars__label {
+  overflow-wrap: anywhere;
+  color: var(--text-muted);
+}
+
+.bars--wide .bars__label {
+  color: var(--text);
+}
+
+.bars__track {
+  display: flex;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 5px;
+  background: var(--surface-2);
+}
+
+.bars__fill {
+  height: 100%;
+}
+
+.bars__value {
+  min-width: 6.5em;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.expenses__visit-sum {
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}

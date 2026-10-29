@@ -10,6 +10,7 @@ import './styles/global.css';
 import './styles/forms.css';
 import './styles/review.css';
 import './styles/state.css';
+import './styles/expenses.css';
 
 void requestPersistenceOnFirstRun();
 ensureSeed(getDb())

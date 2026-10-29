@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { ExpensesScreen } from '../features/expenses/ExpensesScreen';
 import { HistoryScreen } from '../features/history/HistoryScreen';
 import { MoreScreen } from '../features/more/MoreScreen';
 import { InboxScreen } from '../features/inbox/InboxScreen';
@@ -18,6 +19,7 @@ import { useTheme } from './theme';
 const SCREENS: Record<TabId, (props: { route: Route }) => ReactNode> = {
   state: StateScreen,
   history: HistoryScreen,
+  expenses: ExpensesScreen,
   inbox: InboxScreen,
   regulation: RegulationScreen,
   more: MoreScreen,

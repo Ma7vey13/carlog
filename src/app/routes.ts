@@ -1,7 +1,7 @@
 // Hash-based routes (DECISIONS.md, D-003): GitHub Pages has no SPA fallback,
 // and `#/history` works the same online, offline and in the installed app.
 
-export type TabId = 'state' | 'history' | 'inbox' | 'regulation' | 'more';
+export type TabId = 'state' | 'history' | 'expenses' | 'inbox' | 'regulation' | 'more';
 
 export interface Tab {
   id: TabId;
@@ -13,6 +13,7 @@ export interface Tab {
 export const TABS: readonly Tab[] = [
   { id: 'state', path: '/', label: 'Состояние', title: 'Состояние авто' },
   { id: 'history', path: '/history', label: 'История', title: 'История' },
+  { id: 'expenses', path: '/expenses', label: 'Расходы', title: 'Расходы' },
   { id: 'inbox', path: '/inbox', label: 'Входящие', title: 'Входящие' },
   { id: 'regulation', path: '/regulation', label: 'Регламент', title: 'Регламент' },
   { id: 'more', path: '/more', label: 'Ещё', title: 'Ещё' },
