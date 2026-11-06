@@ -6,8 +6,7 @@ import { getDb } from '../db/db';
 import { loadScanBlob } from '../db/scans';
 import { rotatedCopy } from './process';
 
-/** Pages upright (the owner's rotation applied), as JPEG files. */
-export async function scanFiles(scans: readonly Scan[]): Promise<File[]> {
+async function scanFiles(scans: readonly Scan[]): Promise<File[]> {
   const files: File[] = [];
   for (const [i, scan] of scans.entries()) {
     const blob = await loadScanBlob(getDb(), scan.sha256);

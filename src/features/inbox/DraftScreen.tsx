@@ -15,7 +15,6 @@ import { helpHref } from '../help/guides';
 import { ReviewScreen } from '../review/ReviewScreen';
 import { ScanViewer } from '../review/ScanViewer';
 import { AddDocument, ImportJson, IssueList } from './AddDocument';
-import { AutoRecognize } from './AutoRecognize';
 
 export function DraftScreen({ id }: { id: Id }) {
   const draft = useDraft(id);
@@ -66,8 +65,6 @@ function RecognizeView({ draft }: { draft: Draft }) {
   return (
     <div className="stack review-pending">
       <ScanViewer scans={scans ?? []} />
-
-      <AutoRecognize draft={draft} scans={scans} />
 
       <section className="card" aria-label="Распознать через чат">
         <h2 className="card__title">Распознать через чат-ИИ</h2>
