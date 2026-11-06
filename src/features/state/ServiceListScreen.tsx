@@ -6,6 +6,8 @@ import { openRepairs } from '../../core/repairs';
 import { repairEntries, SERVICE_LIST_GROUP_TITLES, SERVICE_LIST_HORIZON, serviceList, serviceListText, type ServiceListEntry } from '../../core/serviceList';
 import { useRepairs } from '../../db/hooks';
 import { copyText } from '../../scan/share';
+import { regulationById } from '../../core/purpose';
+import { ShoppingCard } from './ShoppingCard';
 import { useSelfCheck } from './SelfCheckScreen';
 import { useSchedule } from './useSchedule';
 
@@ -25,6 +27,8 @@ export function ServiceListScreen() {
   const [off, setOff] = useState<ReadonlySet<string>>(new Set());
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
   const [copied, setCopied] = useState<'ok' | 'failed' | null>(null);
+  const regulationMap = useMemo(() => regulationById(data?.regulation), [data?.regulation]);
+  const repairMap = useMemo(() => new Map((repairs ?? []).map((r) => [r.id, r])), [repairs]);
 
   if (!data || !entries || !repairList) return <p className="muted">Загрузка…</p>;
 
@@ -113,6 +117,8 @@ export function ServiceListScreen() {
           <textarea className="input" readOnly rows={Math.min(14, text.split('\n').length + 1)} value={text} onFocus={(e) => e.currentTarget.select()} />
         </div>
       )}
+
+      <ShoppingCard chosen={chosen} regulation={regulationMap} repairs={repairMap} bundles={data.bundles} />
     </div>
   );
 }

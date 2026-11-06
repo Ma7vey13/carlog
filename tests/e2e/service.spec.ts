@@ -61,14 +61,14 @@ test('service list, what was put on, expenses and the mileage note', async ({ pa
   expect(await hasHorizontalScroll(page)).toBe(false);
 
   // Copy: a plain list, nothing else.
-  await page.getByRole('button', { name: 'Скопировать' }).click();
+  await page.getByRole('button', { name: 'Скопировать', exact: true }).click();
   await expect(page.getByTestId('service-list-copied')).toBeVisible();
   expect(await clipboard(page)).toBe(
     'Заменить:\n- Масло двигателя\n\nПроверить:\n- Уровень охлаждающей жидкости в расширительном бачке — уровень у MIN',
   );
   // An unticked line is left out.
   await page.getByTestId('service-item').filter({ hasText: 'охлаждающей' }).getByRole('checkbox').uncheck();
-  await page.getByRole('button', { name: 'Скопировать' }).click();
+  await page.getByRole('button', { name: 'Скопировать', exact: true }).click();
   expect(await clipboard(page)).toBe('Заменить:\n- Масло двигателя');
 
   // Print: the browser dialog opens; the printout is the ticked lines only.
@@ -81,9 +81,21 @@ test('service list, what was put on, expenses and the mileage note', async ({ pa
   await page.emulateMedia({ media: 'print' });
   await expect(page.locator('.service-list__print-title')).toHaveText('Список к ТО');
   await expect(page.getByTestId('service-group').filter({ hasText: 'Проверить' })).toBeHidden();
-  await expect(page.getByRole('button', { name: 'Скопировать' })).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Скопировать', exact: true })).toBeHidden();
   await expect(page.locator('.nav')).toBeHidden();
+  await expect(page.getByTestId('shopping')).toBeHidden();
   await page.emulateMedia({ media: 'screen' });
+
+  // What to buy: the parts of the last oil change, copied apart from the list for the service.
+  const shopping = page.getByTestId('shopping');
+  await expect(shopping.getByTestId('shopping-item')).toHaveCount(2);
+  await expect(shopping.getByTestId('shopping-item').first()).toContainText('для: Масло двигателя');
+  await shopping.getByRole('button', { name: 'Скопировать список покупок' }).click();
+  await expect(page.getByTestId('shopping-copied')).toBeVisible();
+  expect(S(await clipboard(page))).toBe('Купить:\n- Масло моторное — 1 шт, арт. OIL-5W30, в прошлый раз 4 500 ₽\n- Фильтр масляный — 1 шт, в прошлый раз 800 ₽');
+  await shopping.getByTestId('shopping-item').filter({ hasText: 'Фильтр' }).getByRole('checkbox').uncheck();
+  await shopping.getByRole('button', { name: 'Скопировать список покупок' }).click();
+  expect(S(await clipboard(page))).toBe('Купить:\n- Масло моторное — 1 шт, арт. OIL-5W30, в прошлый раз 4 500 ₽');
 
   // The item card: what was put on last time.
   await page.getByTestId('service-item').filter({ hasText: 'Масло двигателя' }).getByRole('link').click();
@@ -151,9 +163,9 @@ test('a repair: added, on the main screen, picked into the service list, done', 
   await expect(page.getByTestId('service-list-empty')).toBeVisible();
   const picker = page.getByTestId('repair-picker');
   await expect(picker.getByRole('checkbox')).not.toBeChecked();
-  await expect(page.getByRole('button', { name: 'Скопировать' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Скопировать', exact: true })).toBeDisabled();
   await picker.getByRole('checkbox').check();
-  await page.getByRole('button', { name: 'Скопировать' }).click();
+  await page.getByRole('button', { name: 'Скопировать', exact: true }).click();
   expect(await clipboard(page)).toBe('Отремонтировать:\n- ШРУС передний левый — хрустит при повороте');
   await page.emulateMedia({ media: 'print' });
   await expect(picker.getByRole('heading', { name: 'Отремонтировать' })).toBeVisible();
