@@ -6,6 +6,7 @@ import { PartRulesScreen } from './PartRulesScreen';
 import { BackupScreen } from './BackupScreen';
 import { ScheduleSettingsScreen } from './ScheduleSettingsScreen';
 import { StorageScreen, useStorageInfo } from './StorageScreen';
+import { RecognitionScreen } from './RecognitionScreen';
 import { SyncPanel } from '../sync/SyncPanel';
 import { SyncScreen } from '../sync/SyncScreen';
 import { HelpScreen } from '../help/HelpScreen';
@@ -22,6 +23,7 @@ export function MoreScreen({ route }: { route: Route }) {
   if (route.rest[0] === 'help') return <HelpScreen route={route} />;
   if (route.rest[0] === 'backup') return <BackupScreen />;
   if (route.rest[0] === 'storage') return <StorageScreen />;
+  if (route.rest[0] === 'recognition') return <RecognitionScreen />;
   return (
     <div className="stack">
       <SyncPanel compact />
@@ -29,6 +31,12 @@ export function MoreScreen({ route }: { route: Route }) {
         <h2 className="card__title">Данные</h2>
         <a className="menu-link" href={hrefFor('/more/components')}>
           <span>Справочник узлов</span>
+          <span className="muted" aria-hidden="true">
+            ›
+          </span>
+        </a>
+        <a className="menu-link" href={hrefFor('/more/recognition')} data-testid="recognition-link">
+          <span>Распознавание через OpenRouter (тест)</span>
           <span className="muted" aria-hidden="true">
             ›
           </span>

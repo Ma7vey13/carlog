@@ -26,7 +26,8 @@ const CSP = [
   "style-src 'self'",
   "img-src 'self' blob: data:",
   "font-src 'self'",
-  "connect-src 'self' https://api.github.com",
+  // openrouter.ai: recognition with the owner's key (D-100).
+  "connect-src 'self' https://api.github.com https://openrouter.ai",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   "object-src 'none'",

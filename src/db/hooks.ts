@@ -19,6 +19,7 @@ import type {
   TermDocument,
 } from '../core/model';
 import { isOpenDraft, loadDrafts } from './drafts';
+import { loadRecognitionSettings, type RecognitionSettings } from './recognition';
 import { loadRepairs } from './repairs';
 import { loadScans } from './scans';
 import { getDb } from './db';
@@ -114,4 +115,9 @@ export function componentTree(components: readonly Component[]): Array<{ compone
 
 export function useRepairs(): Repair[] | undefined {
   return useLiveQuery(() => loadRepairs(getDb()), []);
+}
+
+/** Local, not synced (D-100). */
+export function useRecognitionSettings(): RecognitionSettings | undefined {
+  return useLiveQuery(() => loadRecognitionSettings(getDb()), []);
 }
