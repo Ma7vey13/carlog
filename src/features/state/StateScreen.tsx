@@ -1,5 +1,19 @@
 import { Fragment, useState, type ReactNode } from 'react';
-import { HOME_BLOCK_LABELS, HOME_BLOCKS, loadHomeOrder, moveBlock, saveHomeOrder, type HomeBlock } from '../../app/homeOrder';
+import {
+  HOME_BLOCK_LABELS,
+  HOME_BLOCKS,
+  HOME_TILE_LABELS,
+  HOME_TILES,
+  loadHomeHidden,
+  loadHomeOrder,
+  moveBlock,
+  saveHomeHidden,
+  saveHomeOrder,
+  toggleIn,
+  type HomeBlock,
+  type HomeHidden,
+  type HomeTile,
+} from '../../app/homeOrder';
 import { hrefFor, type Route } from '../../app/routes';
 import { formatDate, formatKm, formatLocalDateTime, plural } from '../../core/format';
 import { SCHEDULE_STATUS_LABELS } from '../../core/labels';
@@ -54,6 +68,7 @@ function StateHome() {
   const repairs = useRepairs();
   const [marking, setMarking] = useState<RegulationItem | null>(null);
   const [order, setOrder] = useState<HomeBlock[]>(loadHomeOrder);
+  const [hidden, setHidden] = useState<HomeHidden>(loadHomeHidden);
   const [editing, setEditing] = useState(false);
 
   if (!data || !terms || !checks || !repairs) return <p className="muted">Загрузка…</p>;
@@ -62,13 +77,20 @@ function StateHome() {
     return (
       <HomeOrderEditor
         order={order}
+        hidden={hidden}
         onChange={(next) => {
           setOrder(next);
           saveHomeOrder(next);
         }}
+        onHidden={(next) => {
+          setHidden(next);
+          saveHomeHidden(next);
+        }}
         onReset={() => {
           setOrder([...HOME_BLOCKS]);
           saveHomeOrder(null);
+          setHidden({ blocks: [], tiles: [] });
+          saveHomeHidden(null);
         }}
         onDone={() => {
           setEditing(false);
@@ -87,7 +109,7 @@ function StateHome() {
 
   const blocks: Record<HomeBlock, ReactNode> = {
     mileage: <MileageCard current={data.current} today={data.today} />,
-    tiles: <HomeTiles forService={forService} repairs={toRepair} checks={checks} terms={terms} />,
+    tiles: <HomeTiles forService={forService} repairs={toRepair} checks={checks} terms={terms} hidden={hidden.tiles} />,
     urgent:
       data.regulation.length === 0 ? (
         <EmptyState icon={<RegulationIcon />} title="Регламент пуст">
@@ -173,9 +195,11 @@ function StateHome() {
 
   return (
     <div className="stack">
-      {order.map((id) => (
-        <Fragment key={id}>{blocks[id]}</Fragment>
-      ))}
+      {order
+        .filter((id) => !hidden.blocks.includes(id))
+        .map((id) => (
+          <Fragment key={id}>{blocks[id]}</Fragment>
+        ))}
 
       {data.settings.severeConditions && (
         <p className="hint">
@@ -183,12 +207,16 @@ function StateHome() {
         </p>
       )}
 
-      <button type="button" className="btn btn--ghost home-edit" onClick={() => {
+      <button
+        type="button"
+        className="btn btn--ghost home-edit"
+        onClick={() => {
           setEditing(true);
           window.scrollTo(0, 0);
         }}
-        data-testid="home-edit">
-        <EditIcon width={18} height={18} /> Изменить порядок блоков
+        data-testid="home-edit"
+      >
+        <EditIcon width={18} height={18} /> Изменить блоки
       </button>
 
       <ManualEventDialog item={marking} onClose={() => setMarking(null)} />
@@ -201,7 +229,21 @@ function countText(n: number, one: string, few: string, many: string, none: stri
 }
 
 /** Four tiles under the mileage (D-098): the ways to the service list, repairs, self-check, documents. */
-function HomeTiles({ forService, repairs, checks, terms }: { forService: number; repairs: Repair[]; checks: SelfCheckStatus[]; terms: TermStatus[] }) {
+function HomeTiles({
+  forService,
+  repairs,
+  checks,
+  terms,
+  hidden,
+}: {
+  forService: number;
+  repairs: Repair[];
+  checks: SelfCheckStatus[];
+  terms: TermStatus[];
+  hidden: readonly HomeTile[];
+}) {
+  if (HOME_TILES.every((t) => hidden.includes(t))) return null;
+  const shown = (t: HomeTile) => !hidden.includes(t);
   const urgentRepairs = repairs.filter((r) => r.urgency === 'urgent').length;
   const attention = checks.filter((c) => c.state === 'attention').length;
   const due = checks.filter((c) => c.state === 'due').length;
@@ -209,6 +251,7 @@ function HomeTiles({ forService, repairs, checks, terms }: { forService: number;
   const soon = terms.filter((t) => t.state === 'soon').length;
   return (
     <nav className="tiles" aria-label="Главное" data-testid="tiles">
+      {shown('service') && (
       <a className="tile tile--primary" href={hrefFor('/state/service-list')} data-testid="service-list-link">
         <span className="tile__top">
           <ClipboardListIcon className="tile__icon" />
@@ -218,6 +261,8 @@ function HomeTiles({ forService, repairs, checks, terms }: { forService: number;
           <span className="tile__sub">{countText(forService, 'пункт', 'пункта', 'пунктов', 'пусто')}</span>
         </span>
       </a>
+      )}
+      {shown('repairs') && (
       <a className="tile tile--repair" href={hrefFor('/state/repairs')} data-testid="repairs-link">
         <span className="tile__top">
           <WrenchIcon className="tile__icon" />
@@ -228,6 +273,8 @@ function HomeTiles({ forService, repairs, checks, terms }: { forService: number;
           <span className="tile__sub">{countText(repairs.length, 'запись', 'записи', 'записей', 'нет')}</span>
         </span>
       </a>
+      )}
+      {shown('selfcheck') && (
       <a className="tile tile--self" href={hrefFor('/state/self-check')} data-testid="self-check-link">
         <span className="tile__top">
           <ChecklistIcon className="tile__icon" />
@@ -244,6 +291,8 @@ function HomeTiles({ forService, repairs, checks, terms }: { forService: number;
           </span>
         </span>
       </a>
+      )}
+      {shown('docs') && (
       <a className="tile" href={hrefFor('/state/docs')} data-testid="docs-link">
         <span className="tile__top">
           <CertificateIcon className="tile__icon" />
@@ -254,12 +303,27 @@ function HomeTiles({ forService, repairs, checks, terms }: { forService: number;
           <span className="tile__sub">{docsSummary(terms)}</span>
         </span>
       </a>
+      )}
     </nav>
   );
 }
 
-/** "Изменить порядок блоков": drag on a computer, arrows anywhere. */
-function HomeOrderEditor({ order, onChange, onReset, onDone }: { order: HomeBlock[]; onChange: (o: HomeBlock[]) => void; onReset: () => void; onDone: () => void }) {
+/** "Изменить блоки": order (drag on a computer, arrows anywhere) and which blocks and tiles to show (D-103). */
+function HomeOrderEditor({
+  order,
+  hidden,
+  onChange,
+  onHidden,
+  onReset,
+  onDone,
+}: {
+  order: HomeBlock[];
+  hidden: HomeHidden;
+  onChange: (o: HomeBlock[]) => void;
+  onHidden: (h: HomeHidden) => void;
+  onReset: () => void;
+  onDone: () => void;
+}) {
   const [dragging, setDragging] = useState<number | null>(null);
   const [over, setOver] = useState<number | null>(null);
   const end = () => {
@@ -269,13 +333,19 @@ function HomeOrderEditor({ order, onChange, onReset, onDone }: { order: HomeBloc
   return (
     <div className="stack" data-testid="home-order">
       <p className="hint">
-        Перетащите блок за ручку или двигайте стрелками. Порядок запоминается на этом устройстве. Блоки, которые сейчас пустые (например, «Входящие»),
-        появятся на своём месте, когда в них что-то будет.
+        Галочка — показывать блок на главном экране. Перетащите блок за ручку или двигайте стрелками. Всё запоминается на этом устройстве. Блоки, которые
+        сейчас пустые (например, «Входящие»), появятся на своём месте, когда в них что-то будет.
       </p>
       <ol className="order-list">
         {order.map((id, i) => {
           const label = HOME_BLOCK_LABELS[id];
-          const cls = ['order-item', dragging === i ? 'order-item--dragging' : '', over === i && dragging !== null && dragging !== i ? 'order-item--over' : '']
+          const visible = !hidden.blocks.includes(id);
+          const cls = [
+            'order-item',
+            visible ? '' : 'order-item--hidden',
+            dragging === i ? 'order-item--dragging' : '',
+            over === i && dragging !== null && dragging !== i ? 'order-item--over' : '',
+          ]
             .filter(Boolean)
             .join(' ');
           return (
@@ -302,7 +372,27 @@ function HomeOrderEditor({ order, onChange, onReset, onDone }: { order: HomeBloc
               onDragEnd={end}
             >
               <DragIcon className="order-item__handle" />
-              <span className="order-item__name">{label}</span>
+              <input
+                type="checkbox"
+                className="order-item__show"
+                checked={visible}
+                aria-label={`Показывать: ${label}`}
+                onChange={() => onHidden({ ...hidden, blocks: toggleIn(hidden.blocks, id) })}
+              />
+              <span className="order-item__name">
+                {label}
+                {!visible && <span className="muted"> — скрыт</span>}
+                {id === 'tiles' && visible && (
+                  <span className="order-tiles">
+                    {HOME_TILES.map((t) => (
+                      <label key={t} className="order-tiles__item">
+                        <input type="checkbox" checked={!hidden.tiles.includes(t)} onChange={() => onHidden({ ...hidden, tiles: toggleIn(hidden.tiles, t) })} />
+                        {HOME_TILE_LABELS[t]}
+                      </label>
+                    ))}
+                  </span>
+                )}
+              </span>
               <button type="button" className="icon-btn" aria-label={`Выше: ${label}`} disabled={i === 0} onClick={() => onChange(moveBlock(order, i, i - 1))}>
                 <ArrowUpIcon width={20} height={20} />
               </button>

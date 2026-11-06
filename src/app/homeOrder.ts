@@ -7,7 +7,7 @@ export type HomeBlock = (typeof HOME_BLOCKS)[number];
 
 export const HOME_BLOCK_LABELS: Record<HomeBlock, string> = {
   mileage: 'Пробег',
-  tiles: 'Плитки: список к ТО, ремонт, самопроверка, документы',
+  tiles: 'Плитки',
   urgent: 'Пора заняться',
   repairs: 'Нужно отремонтировать',
   docs: 'Документы со сроком',
@@ -61,4 +61,54 @@ export function saveHomeOrder(order: readonly HomeBlock[] | null): void {
   } catch {
     // Private mode: the order lasts until the page is closed.
   }
+}
+
+// Hidden blocks and tiles (D-103): the owner can take a block or a single tile off the main screen and
+// bring it back in "Изменить порядок блоков". Also kept on this device only.
+
+export const HOME_TILES = ['service', 'repairs', 'selfcheck', 'docs'] as const;
+
+export type HomeTile = (typeof HOME_TILES)[number];
+
+export const HOME_TILE_LABELS: Record<HomeTile, string> = {
+  service: 'Список к ТО',
+  repairs: 'Отремонтировать',
+  selfcheck: 'Самопроверка',
+  docs: 'Документы',
+};
+
+export interface HomeHidden {
+  blocks: HomeBlock[];
+  tiles: HomeTile[];
+}
+
+const HIDDEN_KEY = 'carlog.homeHidden';
+
+export function normalizeHidden(saved: unknown): HomeHidden {
+  const s = (saved ?? {}) as { blocks?: unknown; tiles?: unknown };
+  const pick = <T extends string>(list: unknown, known: readonly T[]): T[] => (Array.isArray(list) ? known.filter((k) => list.includes(k)) : []);
+  return { blocks: pick(s.blocks, HOME_BLOCKS), tiles: pick(s.tiles, HOME_TILES) };
+}
+
+export function loadHomeHidden(): HomeHidden {
+  try {
+    const raw = localStorage.getItem(HIDDEN_KEY);
+    return normalizeHidden(raw ? JSON.parse(raw) : null);
+  } catch {
+    return { blocks: [], tiles: [] };
+  }
+}
+
+export function saveHomeHidden(hidden: HomeHidden | null): void {
+  try {
+    if (hidden === null) localStorage.removeItem(HIDDEN_KEY);
+    else localStorage.setItem(HIDDEN_KEY, JSON.stringify(hidden));
+  } catch {
+    // Private mode: lasts until the page is closed.
+  }
+}
+
+/** Shows or hides one item. */
+export function toggleIn<T>(list: readonly T[], item: T): T[] {
+  return list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
 }

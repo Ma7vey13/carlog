@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HOME_BLOCKS, moveBlock, normalizeOrder } from './homeOrder';
+import { HOME_BLOCKS, moveBlock, normalizeHidden, normalizeOrder, toggleIn } from './homeOrder';
 
 describe('order of the main screen blocks', () => {
   it('starts from the default order', () => {
@@ -27,5 +27,17 @@ describe('order of the main screen blocks', () => {
     const order = normalizeOrder(null);
     expect(moveBlock(order, 1, 2).slice(0, 3)).toEqual(['mileage', 'urgent', 'tiles']);
     expect(moveBlock(order, 0, 99)).toEqual(order);
+  });
+});
+
+describe('hidden blocks and tiles', () => {
+  it('keeps known ids only', () => {
+    expect(normalizeHidden(null)).toEqual({ blocks: [], tiles: [] });
+    expect(normalizeHidden({ blocks: ['sync', 'nope', 'gray'], tiles: ['docs', 'x'] })).toEqual({ blocks: ['gray', 'sync'], tiles: ['docs'] });
+  });
+
+  it('toggles', () => {
+    expect(toggleIn(['a'], 'b')).toEqual(['a', 'b']);
+    expect(toggleIn(['a', 'b'], 'a')).toEqual(['b']);
   });
 });

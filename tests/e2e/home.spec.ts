@@ -39,11 +39,24 @@ test('tiles, and the blocks reordered with the arrows', async ({ page }) => {
   blocks = await order();
   expect(blocks.indexOf('tiles')).toBe(blocks.indexOf('mileage-card') + 2);
 
+  // Hide a block and one tile; kept after a reload.
+  await page.getByTestId('home-edit').click();
+  await page.getByRole('checkbox', { name: 'Показывать: Синхронизация' }).uncheck();
+  await page.getByRole('checkbox', { name: 'Документы', exact: true }).uncheck();
+  await page.getByRole('button', { name: 'Готово' }).click();
+  await page.reload();
+  await expect(page.getByTestId('tiles')).toBeVisible();
+  await expect(page.getByTestId('sync-line')).toBeHidden();
+  await expect(page.getByTestId('docs-link')).toBeHidden();
+  await expect(tiles.getByRole('link')).toHaveCount(3);
+
   // Back to the default order.
   await page.getByTestId('home-edit').click();
   await page.getByRole('button', { name: 'Как было сначала' }).click();
   await expect(items.nth(1)).toHaveAttribute('data-block', 'tiles');
   await page.getByRole('button', { name: 'Готово' }).click();
+  await expect(page.getByTestId('sync-line')).toBeVisible();
+  await expect(tiles.getByRole('link')).toHaveCount(4);
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
   expect(errors).toEqual([]);
 });
