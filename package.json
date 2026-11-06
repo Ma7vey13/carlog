@@ -18,6 +18,7 @@
     "check": "npm run build && npm test && npm run test:e2e",
     "icons": "node scripts/gen-icons.mjs",
     "prepare": "node scripts/setup-hooks.mjs",
+    "inbox:session": "tsx tools/inbox-session.ts",
     "inbox:pull": "tsx tools/inbox-pull.ts",
     "inbox:check": "tsx tools/inbox-check.ts",
     "inbox:push": "tsx tools/inbox-push.ts",

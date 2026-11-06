@@ -31,7 +31,7 @@ async function main() {
   // Decrypted scans and results must not stay on disk (SPEC section 14).
   rmSync(INBOX_DIR, { recursive: true, force: true });
   console.log(`\nОтправлено черновиков: ${paths.length}. Папка private/inbox удалена.`);
-  console.log('В приложении нажмите «Подтянуть» — черновики появятся во «Входящих» как «Готов к проверке».');
+  console.log('На телефоне черновики появятся во «Входящих» сами (автосинхронизация), как «Готов к проверке».');
 }
 
 main().catch((err: unknown) => {

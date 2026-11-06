@@ -13,12 +13,12 @@ async function main() {
   const { key } = await openVault(DATA_DIR, password);
   const snapshot = await readSnapshot(DATA_DIR, key);
   if (!snapshot) {
-    console.log('В carlog-data ещё нет данных. В приложении нажмите «Отправить».');
+    console.log('В carlog-data ещё нет данных: включите синхронизацию в приложении.');
     return;
   }
   const drafts = await exportInbox(DATA_DIR, INBOX_DIR, key, snapshot);
   if (!drafts.length) {
-    console.log('Черновиков, ждущих распознавания, нет. В приложении: «Входящие» → добавить скан → «Ещё» → «Отправить».');
+    console.log('Черновиков, ждущих распознавания, нет. Сфотографируйте документ во «Входящих» — снимок уйдёт с синхронизацией.');
     return;
   }
   console.log(`\nГотово к распознаванию: ${drafts.length}`);
