@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { checkForUpdate, type UpdateCheck } from '../../app/updates';
 import { hrefFor, type Route } from '../../app/routes';
 import { ComponentsScreen } from './ComponentsScreen';
 import { PartRulesScreen } from './PartRulesScreen';
@@ -168,9 +170,48 @@ function AboutSection() {
           <dd>{formatLocalDate(__BUILD_TIME__)}</dd>
         </div>
       </dl>
+      <UpdateCheckButton />
       <p className="hint">
-        Данные хранятся на этом устройстве; на GitHub уходят только в зашифрованном виде, кнопкой «Отправить».
+        Данные хранятся на этом устройстве; на GitHub уходят только в зашифрованном виде, при синхронизации.
       </p>
     </section>
+  );
+}
+
+const UPDATE_TEXT: Record<UpdateCheck, string> = {
+  available: 'Есть новая версия — нажмите «Обновить» внизу экрана.',
+  latest: 'У вас последняя версия.',
+  offline: 'Нет интернета — проверьте, когда появится связь.',
+  unsupported: 'Проверка обновлений здесь недоступна.',
+  error: 'Не удалось проверить. Попробуйте ещё раз чуть позже.',
+};
+
+/** "Проверить обновления" (D-099): asks for a new version right now. */
+function UpdateCheckButton() {
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<UpdateCheck | null>(null);
+  return (
+    <div className="stack-sm">
+      <button
+        type="button"
+        className="btn btn--secondary"
+        style={{ justifySelf: 'start' }}
+        disabled={busy}
+        onClick={() => {
+          setBusy(true);
+          setResult(null);
+          void checkForUpdate()
+            .then(setResult)
+            .finally(() => setBusy(false));
+        }}
+      >
+        {busy ? 'Проверяю…' : 'Проверить обновления'}
+      </button>
+      {result && (
+        <p className="hint" role="status" data-testid="update-check">
+          {UPDATE_TEXT[result]}
+        </p>
+      )}
+    </div>
   );
 }

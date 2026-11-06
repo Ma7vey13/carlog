@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
+import { checkForUpdate, setUpdateTarget } from './updates';
 
 const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000;
 /** The "saved for offline" notice is informational: it hides itself. */
@@ -38,10 +39,13 @@ export function UpdatePrompt() {
   } = useRegisterSW({
     onRegisteredSW(_url, registration) {
       if (!registration) return;
-      // The app may stay open for days on a phone: check for updates periodically.
-      setInterval(() => {
-        if (navigator.onLine) registration.update().catch(() => {});
-      }, UPDATE_CHECK_INTERVAL_MS);
+      setUpdateTarget(registration, () => setNeedRefresh(true));
+      // The app may stay open for days on a phone: check every hour, and each time the owner comes
+      // back to it — a phone holds back timers of an app in the background (D-099).
+      setInterval(() => void checkForUpdate(), UPDATE_CHECK_INTERVAL_MS);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') void checkForUpdate();
+      });
     },
   });
 
